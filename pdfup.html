@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+.form {
+  background-color: #fff;
+  box-shadow: 0 10px 60px rgb(218, 229, 255);
+  border: 1px solid rgb(159, 159, 160);
+  border-radius: 20px;
+  padding: 2rem .7rem .7rem .7rem;
+  text-align: center;
+  font-size: 1.125rem;
+  max-width: 320px;
+  margin-top: 200px;
+  margin-left: 500px;
+}
+
+.form-title {
+  color: #000000;
+  font-size: 1.8rem;
+  font-weight: 500;
+}
+
+.form-paragraph {
+  margin-top: 10px;
+  font-size: 0.9375rem;
+  color: rgb(105, 105, 105);
+}
+
+.drop-container {
+  background-color: #fff;
+  position: relative;
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  margin-top: 2.1875rem;
+  border-radius: 10px;
+  border: 2px dashed rgb(171, 202, 255);
+  color: #444;
+  cursor: pointer;
+  transition: background .2s ease-in-out, border .2s ease-in-out;
+}
+
+.drop-container:hover {
+  background: rgba(0, 140, 255, 0.164);
+  border-color: rgba(17, 17, 17, 0.616);
+}
+
+.drop-container:hover .drop-title {
+  color: #222;
+}
+
+.drop-title {
+  color: #444;
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  transition: color .2s ease-in-out;
+}
+
+#file-input {
+  width: 350px;
+  max-width: 100%;
+  color: #444;
+  padding: 2px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid rgba(8, 8, 8, 0.288);
+}
+
+#file-input::file-selector-button {
+  margin-right: 20px;
+  border: none;
+  background: #000000;
+  padding: 10px 20px;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  transition: background .2s ease-in-out;
+}
+
+#file-input::file-selector-button:hover {
+  background: #000000;
+}   
+.upload{
+  margin-right: 20px;
+  border: none;
+  background: #000000;
+  padding: 10px 20px;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  transition: background .2s ease-in-out;
+}
+ </style>
+</head>
+<body style="background-color: #d3d3d3;">
+    <form class="form" action="/upload" method="post" enctype="multipart/form-data">
+        <span class="form-title">Upload your files</span>
+        <p class="form-paragraph">
+            Files should be images
+        </p>
+        <label for="file-input" class="drop-container">
+            <span class="drop-title">Drop files here</span>
+            or
+            <input type="file" id="file-input" name="files" multiple onchange="upload(this.file)">
+            <input type="submit" value="Upload" class="upload">
+        </label>
+    </form>
+
+    <!-- Container to display selected file names -->
+    <div id="file-list"></div>
+
+    <script>
+        function upload(files) {
+            const fileInput1 = document.getElementById('hidden-files');
+            for (let i = 0; i < files.length; i++) {
+                fileInput1.files.push(files[i]);
+            }
+            console.log("Files added to hidden input");
+        }
+
+        const fileInput = document.getElementById('file-input');
+        const fileListContainer = document.getElementById('file-list');
+        const hiddenFilesInput = document.getElementById('hidden-files');
+        const selectedFiles = [];
+
+        fileInput.addEventListener('change', function () {
+            console.log('Number of files selected:', this.files.length);
+
+            // Clear the selected files array
+            selectedFiles.length = 0;
+
+            for (let i = 0; i < this.files.length; i++) {
+                const fileName = this.files[i].name;
+                selectedFiles.push(fileName);
+            }
+
+            // Call the upload function to add selected files to the hidden input
+            upload(this.files);
+
+            // Set the selected files in the hidden input
+            hiddenFilesInput.value = selectedFiles.join(', ');
+
+            // Display the selected files in the file list
+            fileListContainer.innerHTML = selectedFiles.map(fileName => {
+                return `<div>${fileName}</div>`;
+            }).join('');
+        });
+    </script>
+</body>
+</html>
