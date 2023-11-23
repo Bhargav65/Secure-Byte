@@ -305,6 +305,7 @@ app.post('/signupimg', async(req, res) => {
     const Name=req.user._json['name'];
     const Email=req.user._json["email"];
     const Password=req.user._json["sub"];
+    req.user={}
     newUser = {
       Name: Name,
       Email: Email,
@@ -318,6 +319,7 @@ app.post('/signupimg', async(req, res) => {
     const Name=req.user._json['name'];
     const Email=req.user._json["email"];
     const Password=req.user._json["sub"];
+    req.user={}
     newUser = {
       Name: Name,
       Email: Email,
