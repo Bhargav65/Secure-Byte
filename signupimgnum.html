@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <link rel="icon" href="/logo.png">
     <title>Sign Up Form</title>
     <style>
         #container {
@@ -84,6 +85,182 @@
   box-shadow: 0px 0px var(--main-color);
 } 
 
+
+.input-container {
+  width: 20px;
+  position: absolute;
+}
+
+.input {
+  padding: 0.001em;
+  height: 40px;
+  width: clamp(100px, 100%, 200px);
+  border: 2px solid #000000;
+  border-top: none;
+  font-size: 16px;
+  background: transparent;
+  outline: none;
+  box-shadow: 7px 7px 0px 0px #000000;
+  transition: all 0.5s;
+}
+
+.input:focus{
+  box-shadow: none;
+  transition: all 0.5s;
+}
+
+.label {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: #0B2447;
+  transition: all 0.5s;
+  transform: scale(0);
+  z-index: -1;
+}
+
+.input-container .top-line {
+  position: absolute;
+  content: "";
+  background-color: #0B2447;
+  width: 100%;
+  height: 2px;
+  right: 0;
+  top: 0;
+  transition: all 0.5s;
+}
+
+.input-container input[type="text"]:focus~.top-line {
+  width: 35%;
+  transition: all 0.5s;
+}
+
+.input-container .under-line {
+  position: absolute;
+  content: "";
+  background-color: #0B2447;
+  width: 0%;
+  height: 2px;
+  right: 0;
+  bottom: 0;
+  transition: all 0.5s;
+}
+
+.input-container input[type="text"]:focus~.under-line {
+  width: 100%;
+  transition: all 0.5s;
+}
+
+.input-container input[type="text"]:focus~.label {
+  top: -10px;
+  transform: scale(1);
+  transition: all 0.5s;
+}
+.button1 {
+  --font-color: #323232;
+  --bg-color: #eee;
+  --main-color: #323232;
+  width: 120px;
+  height: 40px;
+  border-radius: 5px;
+  border: 2px solid var(--main-color);
+  background-color: var(--bg-color);
+  box-shadow: 4px 4px var(--main-color);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--font-color);
+  cursor: pointer;
+}
+
+.button1:active {
+  box-shadow: 0px 0px var(--main-color);
+  transform: translate(3px, 3px);
+}
+
+
+:root {
+    --notification-background: #313e2c;
+    --notification-primary: #aaec8a;
+    --background: #FAF9FF;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0px;
+    padding: 0px;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--background);
+}
+
+.notification {
+    position: absolute;
+    width: max-content;
+    right: 0; 
+    bottom: 90%;
+    margin-left: auto; 
+    margin-right: auto; 
+    border-radius: 6px;
+    background-color: var(
+        --notification-background);
+    color: var(--notification-primary);
+    box-shadow: 0 1px 10px rgba(0, 0, 0, 0.1);
+    transform: translateY(30px);
+    opacity: 0;
+    visibility: hidden;
+    animation: fade-in 3s linear;
+}
+
+.notification__icon {
+    height: 26px;
+    width: 26px;
+    margin-right: 4px;
+}
+
+.notification__body {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 16px 8px;
+}
+
+.notification__progress {
+    position: absolute;
+    left: 4px;
+    bottom: 4px;
+    width: calc(100% - 8px);
+    height: 3px;
+    transform: scaleX(0);
+    transform-origin: left;
+    background: linear-gradient(
+        to right, 
+        var(--notification-background),  
+        var(--notification-primary)
+    );
+    border-radius: inherit;
+    animation: progress 2.5s 0.3s linear;
+}
+
+@keyframes fade-in {
+    5% {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+    95% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes progress {
+    to {
+        transform: scaleX(1);
+    }
+}
+
     </style>
     <script>
         // Function to capture image from webcam
@@ -129,14 +306,25 @@
     </script>
 </head>
 <body>
-    <h2>Sign Up</h2>
-    <div style="display: flex; align-items:center; gap: 20px;">
+  <div class="notification">
+    <div class="notification__body">
+      &#x24D8; Please enter the 10 digit phone number and take a snap and click submit 
+    </div>
+    <div class="notification__progress"></div>
+</div>
+   <center><h2>Sign Up</h2></center> 
+    <br>
+    <br>
         <form action="/signupnum" method="post" id="form">
             <input type="hidden" id="imageData" name="imageData">
             <label for="phone">Phone Number:</label>
-            <input type="tel" id="phone" name="phone" required>
-            <br><br>
+            <div class="input-container" ></div>
+              <input class="input" name="phone" type="tel" id="phone"  class="input" required >
+              <label class="label">Phone number</label>
+              <div class="top-line"></div>
+              <div class="under-line"></div>
             <br>
+
         </form>
         <button type="button" class="button"  onclick="captureImage()" style="margin-top: 35px;">
             <span class="button__text" style="margin-left:-15px">Take a Snap</span>
@@ -148,9 +336,10 @@
         <img id="preview" src="" alt="Captured Image">
     </div>
     <br><br>
-    <br><br>
-    <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
-    <input type="submit" id="submitBtn" value="Submit" disabled form="form">
+    <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>  </center>
+<center>
+    <input type="submit" id="submitBtn" value="Submit" disabled form="form" class="button1"></center>
+  </center>
     <script>
         // Get access to the webcam stream
         navigator.mediaDevices.getUserMedia({ video: true })

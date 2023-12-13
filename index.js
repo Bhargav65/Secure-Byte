@@ -12,9 +12,9 @@ const jwt = require('jsonwebtoken');
 const secretKey = 'YourSecretKey';
 const NodeCache = require('node-cache');
 const cache = new NodeCache();
-const accountSid = "AC9d67ebe29a83e686412da8019144851c";
-const authToken = "af9d726a5d6c48e0dd7c88236cdbdba6";
-const verifySid = "VAc114a62e67c73cc2ab3ffeaeae635949";
+const accountSid = "AC0f95cb0ec3c018d145054f2c6c83ccc3";
+const authToken = "98b6f228996e4b0266ee9ff598379bb0";
+const verifySid = "VA4b52daeec89b7be1339559c5d4744a05";
 const client1 = require("twilio")(accountSid, authToken);
 const request=require('request')
 const multer = require('multer');
@@ -40,9 +40,15 @@ function encryptData(data) {
 }
 
 
-function decryptData(encryptedData) {
-  const decryptedData = jwt.verify(encryptedData, secretKey);
-  return decryptedData;
+function decryptData(encryptedData,res) {
+  if(typeof encryptedData === "undefined"){
+    res.sendFile(path.join(__dirname+'/error.html'));
+  }
+  else{
+    const decryptedData = jwt.verify(encryptedData, secretKey);
+    return decryptedData;
+  }
+  
 }
 
 const uri = "mongodb+srv://admin:admin@cluster0.dbot6fn.mongodb.net/SecureByteData?retryWrites=true&w=majority";
@@ -54,15 +60,17 @@ app.use(bodyParser.urlencoded({ limit: '130mb', extended: true }));
 
 client.connect((err) => {
   if (err) {
-    console.log('Error connecting to MongoDB Atlas', err);
-    return;
+    console.log("line 57")
+    res.sendFile(path.join(__dirname+'/error.html'));
   }
   console.log('Connected to MongoDB Atlas');
   db = client.db("myproject").collection("project1");
 });
 
 
-
+app.get('/',(req,res)=>{
+  res.sendFile(path.join(__dirname+'/index.html'));
+})
 
 
 app.use(session({
@@ -100,9 +108,9 @@ app.get('/signup', (req, res) => {
   res.sendFile(path.join(__dirname + '/signup.html'));
 });
 
+let k;
 
-
-function googleotp(email,name){
+function googleotp(email,name,res){
   function generateOTP() {
     var digits = '0123456789';
     let OTP = '';
@@ -113,7 +121,6 @@ function googleotp(email,name){
     return OTP;
 }
 const otp=generateOTP()
-console.log(otp);
   const transporter = nodemailer.createTransport({
     service : 'Gmail',
     auth : {
@@ -139,14 +146,18 @@ console.log(otp);
   transporter.sendMail(mail_option, (error, info) => {
     if(error)
     {
-      console.log(error);
-    }
-    else
-    {
-      return otp
+      console.log("line 144");
+      notifier.notify({
+        title: 'ERROR SENDING OTP',
+        message: 'Please re-login again!',
+        icon:path.join(__dirname,'logo.png'),
+        sound:true
+      });
+    res.redirect('/signin');
     }
   });
-  return otp;
+  console.log("generated otp is:",otp)
+  return otp
 }
 
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
@@ -155,8 +166,7 @@ app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   async(req, res) => {
     const cache1 = cache.get('dataKey');
-    const body = decryptData(cache1);
-    cache.del('dataKey');
+    const body = decryptData(cache1,res);
     if(body['form2CheckboxStatus']=='checked'){
       const doc=await db.findOne({Email:req.user._json["email"]})
 
@@ -171,33 +181,19 @@ app.get('/auth/google/callback',
 
 
       else if(!doc && body['verificationType1']=='email'){
-        const Email=req.user._json["email"];
-        const name=req.user._json['name'];
-        const encryptedData1 = encryptData('email');
-        cache.set('verification', encryptedData1);
-        const k=googleotp(Email,name);
-        console.log(k);
-        res.send(`
-    <form action="/check-gmailotp" method="post">
-      <label for="otp">Enter the OTP:</label>
-      <input type="text" id="otp" name="otp" />
-      <button type="submit">Verify</button>
-    </form>
-  `);
-
-  
-  app.post('/check-gmailotp',(req,res)=>{
-    if(req.body.otp==k){
-      const encryptedData1 = encryptData('email');
-      cache.set('verification', encryptedData1);
-      res.sendFile(path.join(__dirname+'/signupimg.html')); 
-    }
-  })
+        res.redirect('/google-signup')
         }
 
       else{
-        res.send("User already exists");
+        notifier.notify({
+          title: 'YOUR EMAIL ID ALREADY EXISTS',
+          message: 'Your acount is present in our databse! Please login',
+          icon:path.join(__dirname,'logo.png'),
+          sound:true
+        });
+        res.redirect('/signin');
       }
+      
     }
     else if(body=='signin'){
       const opt = encryptData("google login");
@@ -215,14 +211,293 @@ app.get('/auth/google/callback',
         res.sendFile(path.join(__dirname+'/signupimg.html')); 
       }
       else{
-        res.send("User already exists");
+        notifier.notify({
+          title: 'YOUR EMAIL ID ALREADY EXISTS',
+          message: 'Your acount is present in our databse! Please login',
+          icon:path.join(__dirname,'logo.png'),
+          sound:true
+        });
+        res.redirect('/signin');
       }
+      
     }
   });
 
 
 
+app.get('/google-signup',async(req,res)=>{
+  const Email=req.user._json["email"];
+        const name=req.user._json['name'];
+        const encryptedData1 = encryptData('email');
+        cache.set('verification', encryptedData1);
+        k=googleotp(Email,name,res);
+        res.send(`
+        <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Document</title>
+      <style>
+  html, body {
+      height: 100%;
+      margin: 0;
+  }
+  body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #d3d3d3;
+  }
+          .form {
+    width: 29em;
+    height: 25em;
+    display: flex;
+    flex-direction: column;
+    border-radius: 19px;
+    background-color: #d3d3d3;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    transition: .4s ease-in-out;
+    align-items:center;
+    top: auto;
+      bottom: auto;
+      margin-top: -12em;
+    
+  }
   
+  .form:hover {
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.1);
+    scale: 0.99;
+  }
+  
+  .heading {
+    position: relative;
+    text-align: center;
+    color: black;
+    top: 3em;
+    font-weight: bold;
+  }
+  
+  .check {
+    position: relative;
+    align-self: center;
+    top: 4em;
+  }
+  
+  .input {
+    position: relative;
+    width: 2.5em;
+    height: 2.5em;
+    margin: 0.5em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    background-color: rgb(235, 235, 235);
+    box-shadow: inset 3px 3px 6px #d1d1d1,
+              inset -3px -3px 6px #ffffff;
+    top: 6.5em;
+    left: 1em;
+    padding-left: 15px;
+    transition: .4s ease-in-out;
+  }
+  
+  .input:hover {
+    box-shadow: inset 0px 0px 0px #d1d1d1,
+              inset 0px 0px 0px #ffffff;
+    background-color: rgb(149, 149, 149);
+  }
+  
+  .input:focus {
+    box-shadow: inset 0px 0px 0px #d1d1d1,
+              inset 0px 0px 0px #ffffff;
+  }
+  
+  .btn1 {
+    position: relative;
+    top: 8.5em;
+    left: 1.2em;
+    width: 17em;
+    height: 3em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+    box-shadow: 1px 1px 3px #b5b5b5,
+               -1px -1px 3px #ffffff;
+  }
+  
+  .btn1:active {
+    box-shadow: inset 3px 3px 6px #b5b5b5,
+              inset -3px -3px 6px #ffffff;
+  }
+  
+  .btn2 {
+    position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    width: 17em;
+    height: 3em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+    box-shadow: 1px 1px 3px #b5b5b5,
+               -1px -1px 3px #ffffff;
+  }
+  
+  .btn2:active {
+    box-shadow: inset 3px 3px 6px #b5b5b5,
+              inset -3px -3px 6px #ffffff;
+  }
+      </style>
+  <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          var inputs = document.querySelectorAll('.input');
+  
+          inputs.forEach(function (input, index) {
+              input.addEventListener('input', function () {
+                  if (this.value.length === 1) {
+                      if (index < inputs.length - 1) {
+                          inputs[index + 1].focus();
+                      }
+                  }
+              });
+  
+              input.addEventListener('keydown', function (e) {
+                  if (e.key === 'Backspace' && index > 0) {
+                      inputs[index - 1].focus();
+                  }
+              });
+          });
+      });
+  </script>
+  <style>
+    #timer {
+      display: none;
+      position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+
+    }
+    #resend{
+        position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+
+    }
+    #resendBtn {
+      display: none;
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Function to display timer
+      function startTimer(duration, display) {
+        var timer = duration, minutes, seconds;
+        setInterval(function () {
+          minutes = parseInt(timer / 60, 10);
+          seconds = parseInt(timer % 60, 10);
+
+          minutes = minutes < 10 ? "0" + minutes : minutes;
+          seconds = seconds < 10 ? "0" + seconds : seconds;
+
+          display.textContent = minutes + ":" + seconds;
+
+          if (--timer < 0) {
+            // Timer has finished, display the resend button
+            document.getElementById('timer').style.display = 'none';
+            document.getElementById('resendBtn').style.display = 'block';
+          }
+        }, 1000);
+      }
+
+      // Set the duration of the timer (1 minute)
+      var timerDuration = 30;
+
+      // Display the timer after 1 second
+      setTimeout(function () {
+        document.getElementById('timer').style.display = 'block';
+        var timerDisplay = document.querySelector('#timer');
+        startTimer(timerDuration, timerDisplay);
+      }, 1000);
+    });
+  </script>
+  </head>
+  <body>
+      <form class="form" action="/check-gmailotp" method="post">
+          <p class="heading">Verify</p>
+          <svg class="check" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="60px" height="60px" viewBox="0 0 60 60" xml:space="preserve">  <image id="image0" width="60" height="60" x="0" y="0" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAQAAACQ9RH5AAAABGdBTUEAALGPC/xhBQAAACBjSFJN
+        AAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAJcEhZ
+        cwAACxMAAAsTAQCanBgAAAAHdElNRQfnAg0NDzN/r+StAAACR0lEQVRYw+3Yy2sTURTH8W+bNgVf
+        aGhFaxNiAoJou3FVEUQE1yL031BEROjCnf4PLlxILZSGYncuiiC48AEKxghaNGiliAojiBWZNnNd
+        xDza3pl77jyCyPzO8ubcT85wmUkG0qT539In+MwgoxQoUqDAKDn2kSNLlp3AGi4uDt9xWOUTK3xg
+        hVU2wsIZSkxwnHHGKZOxHKfBe6rUqFGlTkPaVmKGn6iYao1ZyhK2zJfY0FZ9ldBzsbMKxZwZjn/e
+        5szGw6UsD5I0W6T+hBhjUjiF7bNInjz37Ruj3igGABjbtpIo3GIh30u4ww5wr3fwfJvNcFeznhBs
+        YgXw70TYX2bY/ulkZhWfzfBbTdtrzjPFsvFI+T/L35jhp5q2owDs51VIVvHYDM9sa/LY8XdtKy1l
+        FXfM8FVN2/X2ajctZxVXzPA5TZvHpfb6CFXxkerUWTOcY11LX9w0tc20inX2mmF4qG3upnNWrOKB
+        hIXLPu3dF1x+kRWq6ysHpkjDl+7eQjatYoOCDIZF3006U0unVSxIWTgTsI3HNP3soSJkFaflMDwL
+        3OoHrph9YsPCJJ5466DyOGUHY3Epg2rWloUxnMjsNw7aw3AhMjwVhgW4HYm9FZaFQZ/bp6QeMRQe
+        hhHehWKXGY7CAuSpW7MfKUZlAUqWdJ3DcbAAB3guZl9yKC4WYLfmT4muFtgVJwvQx7T2t0mnXK6J
+        XlGGyAQvfNkaJ5JBmxnipubJ5HKDbJJsM0eY38QucSx5tJWTVHBwqDDZOzRNmn87fwDoyM4J2hRz
+        NgAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyMy0wMi0xM1QxMzoxNTo1MCswMDowMKC8JaoAAAAldEVY
+        dGRhdGU6bW9kaWZ5ADIwMjMtMDItMTNUMTM6MTU6NTArMDA6MDDR4Z0WAAAAKHRFWHRkYXRlOnRp
+        bWVzdGFtcAAyMDIzLTAyLTEzVDEzOjE1OjUxKzAwOjAwIIO3fQAAAABJRU5ErkJggg=="></image>
+        </svg>
+          <div class="box">
+          <input class="input" type="password" maxlength="1" name="otp">
+          <input class="input" type="password" maxlength="1" name="otp1"> 
+          <input class="input" type="password" maxlength="1" name="otp2">
+          <input class="input" type="password" maxlength="1" name="otp3">
+          <input class="input" type="password" maxlength="1" name="otp4">
+          <input class="input" type="password" maxlength="1" name="otp5">
+          </div>
+          <button type="submit" class="btn1">Verify</button>
+          <div id="resend">Resend OTP in:</div>
+          <div id="timer" class="timer"><span id="timerDisplay"></span></div>
+  <button id="resendBtn" onclick="resendFunction()" class="btn2" form="form1">Resend</button>
+      </form>
+      <form action="/google-signup" id="form1" method="get"></form>
+  </body>
+  </html>
+  `);
+
+  
+  app.post('/check-gmailotp',(req,res)=>{
+    const otp=req.body.otp+req.body.otp1+req.body.otp2+req.body.otp3+req.body.otp4+req.body.otp5;
+    if(otp==k){
+      const encryptedData1 = encryptData('email');
+      cache.set('verification', encryptedData1);
+      res.sendFile(path.join(__dirname+'/signupimg.html')); 
+    }
+    else{
+       notifier.notify({
+        title: 'INVALID OTP',
+        message: 'You have entered invalid otp! please enter a valid otp',
+        icon: path.join(__dirname, 'logo.png'),
+        sound: true
+      });
+      res.redirect('/google-signup');
+    }
+})
+})
+  
+
+
+
+
+
+
+
+
+
 app.post('/signup', async (req, res) => {
   if(req.body['verificationType1']==''){
     req.body['verificationType1']='email';
@@ -245,32 +520,20 @@ app.post('/signup', async (req, res) => {
     const encryptedData = encryptData(body);
     cache.set('dataKey', encryptedData);
     const Email=req.body.Email;
-    const name=req.body.Name;
     const doc=await db.findOne({Email:Email})
     if(!doc){
-      const encryptedData2 = encryptData('email');
-      cache.set('verification', encryptedData2);
-      const k=googleotp(Email,name);
-      res.send(`
-  <form action="/check-gmailotp" method="post">
-    <label for="otp">Enter the OTP:</label>
-    <input type="text" id="otp" name="otp" />
-    <button type="submit">Verify</button>
-  </form>
-`);
-
-
-app.post('/check-gmailotp',(req,res)=>{
-  if(req.body.otp==k){
-    res.sendFile(path.join(__dirname+'/signupimg.html')); 
-  }
-})
-  const encryptedData1 = encryptData('email');
-  cache.set('verification', encryptedData1);
-  
-} 
+      res.redirect('/signupwithemail');
     }
-        
+    else{
+      notifier.notify({
+        title: 'YOUR EMAIL ID ALREADY EXISTS',
+        message: 'Your acount is present in our databse! Please login',
+        icon:path.join(__dirname,'logo.png'),
+        sound:true
+      });
+      res.redirect('/signin');
+    }
+  }
 
 
   else if(req.body.form1CheckboxStatus=='checked' && req.body.verificationType=='sms'){
@@ -284,24 +547,284 @@ app.post('/check-gmailotp',(req,res)=>{
 
   else{
     const body=req.body;
-    console.log("this is executed");
     const encryptedData = encryptData(body);
     cache.set('dataKey', encryptedData);
     const encryptedData1 = encryptData('nil');
     cache.set('verification', encryptedData1);
     res.sendFile(path.join(__dirname+'/signupimg.html'));
   }
-  });
+})
+
+
+
+
+app.get('/signupwithemail',async(req,res)=>{
+  const cache7 = cache.get('dataKey');
+  const body = decryptData(cache7,res);
+  const name=body.Name;
+  const Email=body.Email;
+  const encryptedData2 = encryptData('email');
+      cache.set('verification', encryptedData2);
+      k=googleotp(Email,name,res);
+      res.send(`
+      <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Document</title>
+      <style>
+  html, body {
+      height: 100%;
+      margin: 0;
+  }
+  body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #d3d3d3;
+  }
+          .form {
+    width: 29em;
+    height: 25em;
+    display: flex;
+    flex-direction: column;
+    border-radius: 19px;
+    background-color: #d3d3d3;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    transition: .4s ease-in-out;
+    align-items:center;
+    top: auto;
+      bottom: auto;
+      margin-top: -12em;
+    
+  }
+  
+  .form:hover {
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.1);
+    scale: 0.99;
+  }
+  
+  .heading {
+    position: relative;
+    text-align: center;
+    color: black;
+    top: 3em;
+    font-weight: bold;
+  }
+  
+  .check {
+    position: relative;
+    align-self: center;
+    top: 4em;
+  }
+  
+  .input {
+    position: relative;
+    width: 2.5em;
+    height: 2.5em;
+    margin: 0.5em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    background-color: rgb(235, 235, 235);
+    box-shadow: inset 3px 3px 6px #d1d1d1,
+              inset -3px -3px 6px #ffffff;
+    top: 6.5em;
+    left: 1em;
+    padding-left: 15px;
+    transition: .4s ease-in-out;
+  }
+  
+  .input:hover {
+    box-shadow: inset 0px 0px 0px #d1d1d1,
+              inset 0px 0px 0px #ffffff;
+    background-color: rgb(149, 149, 149);
+  }
+  
+  .input:focus {
+    box-shadow: inset 0px 0px 0px #d1d1d1,
+              inset 0px 0px 0px #ffffff;
+  }
+  
+  .btn1 {
+    position: relative;
+    top: 8.5em;
+    left: 1.2em;
+    width: 17em;
+    height: 3em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+    box-shadow: 1px 1px 3px #b5b5b5,
+               -1px -1px 3px #ffffff;
+  }
+  
+  .btn1:active {
+    box-shadow: inset 3px 3px 6px #b5b5b5,
+              inset -3px -3px 6px #ffffff;
+  }
+  
+  .btn2 {
+    position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    width: 17em;
+    height: 3em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+    box-shadow: 1px 1px 3px #b5b5b5,
+               -1px -1px 3px #ffffff;
+  }
+  
+  .btn2:active {
+    box-shadow: inset 3px 3px 6px #b5b5b5,
+              inset -3px -3px 6px #ffffff;
+  }
+      </style>
+  <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          var inputs = document.querySelectorAll('.input');
+  
+          inputs.forEach(function (input, index) {
+              input.addEventListener('input', function () {
+                  if (this.value.length === 1) {
+                      if (index < inputs.length - 1) {
+                          inputs[index + 1].focus();
+                      }
+                  }
+              });
+  
+              input.addEventListener('keydown', function (e) {
+                  if (e.key === 'Backspace' && index > 0) {
+                      inputs[index - 1].focus();
+                  }
+              });
+          });
+      });
+  </script>
+  <style>
+    #timer {
+      display: none;
+      position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+
+    }
+    #resend{
+        position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+
+    }
+    #resendBtn {
+      display: none;
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Function to display timer
+      function startTimer(duration, display) {
+        var timer = duration, minutes, seconds;
+        setInterval(function () {
+          minutes = parseInt(timer / 60, 10);
+          seconds = parseInt(timer % 60, 10);
+
+          minutes = minutes < 10 ? "0" + minutes : minutes;
+          seconds = seconds < 10 ? "0" + seconds : seconds;
+
+          display.textContent = minutes + ":" + seconds;
+
+          if (--timer < 0) {
+            // Timer has finished, display the resend button
+            document.getElementById('timer').style.display = 'none';
+            document.getElementById('resendBtn').style.display = 'block';
+          }
+        }, 1000);
+      }
+
+      // Set the duration of the timer (1 minute)
+      var timerDuration = 30;
+
+      // Display the timer after 1 second
+      setTimeout(function () {
+        document.getElementById('timer').style.display = 'block';
+        var timerDisplay = document.querySelector('#timer');
+        startTimer(timerDuration, timerDisplay);
+      }, 1000);
+    });
+  </script>
+  </head>
+  <body>
+      <form class="form" action="/check-gmailotp" method="post">
+          <p class="heading">Verify</p>
+          <svg class="check" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="60px" height="60px" viewBox="0 0 60 60" xml:space="preserve">  <image id="image0" width="60" height="60" x="0" y="0" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAQAAACQ9RH5AAAABGdBTUEAALGPC/xhBQAAACBjSFJN
+        AAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAJcEhZ
+        cwAACxMAAAsTAQCanBgAAAAHdElNRQfnAg0NDzN/r+StAAACR0lEQVRYw+3Yy2sTURTH8W+bNgVf
+        aGhFaxNiAoJou3FVEUQE1yL031BEROjCnf4PLlxILZSGYncuiiC48AEKxghaNGiliAojiBWZNnNd
+        xDza3pl77jyCyPzO8ubcT85wmUkG0qT539In+MwgoxQoUqDAKDn2kSNLlp3AGi4uDt9xWOUTK3xg
+        hVU2wsIZSkxwnHHGKZOxHKfBe6rUqFGlTkPaVmKGn6iYao1ZyhK2zJfY0FZ9ldBzsbMKxZwZjn/e
+        5szGw6UsD5I0W6T+hBhjUjiF7bNInjz37Ruj3igGABjbtpIo3GIh30u4ww5wr3fwfJvNcFeznhBs
+        YgXw70TYX2bY/ulkZhWfzfBbTdtrzjPFsvFI+T/L35jhp5q2owDs51VIVvHYDM9sa/LY8XdtKy1l
+        FXfM8FVN2/X2ajctZxVXzPA5TZvHpfb6CFXxkerUWTOcY11LX9w0tc20inX2mmF4qG3upnNWrOKB
+        hIXLPu3dF1x+kRWq6ysHpkjDl+7eQjatYoOCDIZF3006U0unVSxIWTgTsI3HNP3soSJkFaflMDwL
+        3OoHrph9YsPCJJ5466DyOGUHY3Epg2rWloUxnMjsNw7aw3AhMjwVhgW4HYm9FZaFQZ/bp6QeMRQe
+        hhHehWKXGY7CAuSpW7MfKUZlAUqWdJ3DcbAAB3guZl9yKC4WYLfmT4muFtgVJwvQx7T2t0mnXK6J
+        XlGGyAQvfNkaJ5JBmxnipubJ5HKDbJJsM0eY38QucSx5tJWTVHBwqDDZOzRNmn87fwDoyM4J2hRz
+        NgAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyMy0wMi0xM1QxMzoxNTo1MCswMDowMKC8JaoAAAAldEVY
+        dGRhdGU6bW9kaWZ5ADIwMjMtMDItMTNUMTM6MTU6NTArMDA6MDDR4Z0WAAAAKHRFWHRkYXRlOnRp
+        bWVzdGFtcAAyMDIzLTAyLTEzVDEzOjE1OjUxKzAwOjAwIIO3fQAAAABJRU5ErkJggg=="></image>
+        </svg>
+          <div class="box">
+          <input class="input" type="password" maxlength="1" name="otp">
+          <input class="input" type="password" maxlength="1" name="otp1"> 
+          <input class="input" type="password" maxlength="1" name="otp2">
+          <input class="input" type="password" maxlength="1" name="otp3">
+          <input class="input" type="password" maxlength="1" name="otp4">
+          <input class="input" type="password" maxlength="1" name="otp5">
+          </div>
+          <button type="submit" class="btn1">Verify</button>
+          <div id="resend">Resend OTP in:</div>
+          <div id="timer" class="timer"><span id="timerDisplay"></span></div>
+  <button id="resendBtn" onclick="resendFunction()" class="btn2" form="form1">Resend</button>
+      </form>
+      <form action="/signupwithemail" id="form1" method="get"></form>
+  </body>
+  </html>
+`);
+
+
+app.post('/check-gmailotp',(req,res)=>{
+  const otp=req.body.otp+req.body.otp1+req.body.otp2+req.body.otp3+req.body.otp4+req.body.otp5;
+  if(otp==k){
+    res.sendFile(path.join(__dirname+'/signupimg.html')); 
+  }
+})
+  const encryptedData1 = encryptData('email');
+  cache.set('verification', encryptedData1);
+  
+});
+
 
 
 
 app.post('/signupimg', async(req, res) => {
   const objectLength = Object.keys(req.body).length;
   const cache1 = cache.get('verification');
-  const verification = decryptData(cache1);
+  const verification = decryptData(cache1,res);
   var newUser={};
   if(objectLength==1 && req.user && verification=='email'){
-    console.log("this is signup with google without phone");
     const Name=req.user._json['name'];
     const Email=req.user._json["email"];
     const Password=req.user._json["sub"];
@@ -315,7 +838,6 @@ app.post('/signupimg', async(req, res) => {
     };
   }
   else if(objectLength==1 && req.user && verification=='nil'){
-    console.log("this is signup with google without phone");
     const Name=req.user._json['name'];
     const Email=req.user._json["email"];
     const Password=req.user._json["sub"];
@@ -329,11 +851,8 @@ app.post('/signupimg', async(req, res) => {
     };
   }
   else if(!req.user && verification=='email'){
-    console.log("this is signup without phone")
-    console.log("hi1");
     const cache1 = cache.get('dataKey');
-    const body = decryptData(cache1);
-    cache.del('dataKey')
+    const body = decryptData(cache1,res);
     const Name=body.Name;
     const Email=body.Email;
     const Password=body.Password;
@@ -346,15 +865,11 @@ app.post('/signupimg', async(req, res) => {
     };
   }
   else if(!req.user && verification=='nil'){
-    console.log("hello1");
     const cache1 = cache.get('dataKey');
-    const body = decryptData(cache1);
-    console.log(body);
-    cache.del('dataKey')
+    const body = decryptData(cache1,res);
     const Name=body.Name;
     const Email=body.Email;
     const Password=body.Password;
-    console.log(req.body);
     newUser = {
       Name: Name,
       Email: Email,
@@ -368,9 +883,15 @@ app.post('/signupimg', async(req, res) => {
   if(!result){
     db.insertOne(newUser, function(err, result) {
       if (err) {
-        console.log('Error inserting user into database', err);
-        return res.status(500).json({ error: 'Internal server error' });
+        console.log("line 717")
+        res.sendFile(path.join(__dirname+'/error.html'));
       } else {
+        notifier.notify({
+          title: 'ACCOUNT CREATED SUCCESSFULLY',
+          message: 'Your acount has been created in Securebyte! Happy Securing',
+          icon:path.join(__dirname,'logo.png'),
+          sound:true
+        });
         res.redirect('/signin');}
     });
   }
@@ -381,8 +902,18 @@ app.post('/signupimg', async(req, res) => {
 
 
 app.post('/signupnum',(req,res)=>{
-  const phone="+91"+req.body.phone;
-  const Base64Image=req.body.imageData;
+  var phone;
+  var Base64Image;
+  if(cache.has('phone') && cache.has('Base64Image')){
+    const cache5 = cache.get('phone');
+    phone = decryptData(cache5,res);
+    const cache6=cache.get('Base64Image');
+    Base64Image=decryptData(cache6,res)
+  }
+  else{
+    phone="+91"+req.body.phone 
+    Base64Image=req.body.imageData;
+  }
   client1.verify.v2
   .services(verifySid)
   .verifications.create({ to: phone, channel: "sms" })
@@ -395,26 +926,262 @@ app.post('/signupnum',(req,res)=>{
       res.redirect('/verify');
   })
   .catch((error) => {
-    console.error(error);
-    res.send("Error occurred while sending OTP");
+    console.log("line 750");
+    notifier.notify({
+      title: 'ERROR SENDING OTP',
+      message: 'An error has occurred while sending otp! The otp will be resent! ',
+      icon:path.join(__dirname,'logo.png'),
+      sound:true
+    });
+    res.redirect('/signupnum')
   });
 })
 
 
 app.get("/verify", (req, res) => {
   res.send(`
-    <form action="/check-otp" method="post">
-      <label for="otp">Enter the OTP:</label>
-      <input type="text" id="otp" name="otp" />
-      <button type="submit">Verify</button>
-    </form>
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Document</title>
+      <style>
+  html, body {
+      height: 100%;
+      margin: 0;
+  }
+  body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #d3d3d3;
+  }
+          .form {
+    width: 29em;
+    height: 25em;
+    display: flex;
+    flex-direction: column;
+    border-radius: 19px;
+    background-color: #d3d3d3;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    transition: .4s ease-in-out;
+    align-items:center;
+    top: auto;
+      bottom: auto;
+      margin-top: -12em;
+    
+  }
+  
+  .form:hover {
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.1);
+    scale: 0.99;
+  }
+  
+  .heading {
+    position: relative;
+    text-align: center;
+    color: black;
+    top: 3em;
+    font-weight: bold;
+  }
+  
+  .check {
+    position: relative;
+    align-self: center;
+    top: 4em;
+  }
+  
+  .input {
+    position: relative;
+    width: 2.5em;
+    height: 2.5em;
+    margin: 0.5em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    background-color: rgb(235, 235, 235);
+    box-shadow: inset 3px 3px 6px #d1d1d1,
+              inset -3px -3px 6px #ffffff;
+    top: 6.5em;
+    left: 1em;
+    padding-left: 15px;
+    transition: .4s ease-in-out;
+  }
+  
+  .input:hover {
+    box-shadow: inset 0px 0px 0px #d1d1d1,
+              inset 0px 0px 0px #ffffff;
+    background-color: rgb(149, 149, 149);
+  }
+  
+  .input:focus {
+    box-shadow: inset 0px 0px 0px #d1d1d1,
+              inset 0px 0px 0px #ffffff;
+  }
+  
+  .btn1 {
+    position: relative;
+    top: 8.5em;
+    left: 1.2em;
+    width: 17em;
+    height: 3em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+    box-shadow: 1px 1px 3px #b5b5b5,
+               -1px -1px 3px #ffffff;
+  }
+  
+  .btn1:active {
+    box-shadow: inset 3px 3px 6px #b5b5b5,
+              inset -3px -3px 6px #ffffff;
+  }
+  
+  .btn2 {
+    position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    width: 17em;
+    height: 3em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+    box-shadow: 1px 1px 3px #b5b5b5,
+               -1px -1px 3px #ffffff;
+  }
+  
+  .btn2:active {
+    box-shadow: inset 3px 3px 6px #b5b5b5,
+              inset -3px -3px 6px #ffffff;
+  }
+      </style>
+  <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          var inputs = document.querySelectorAll('.input');
+  
+          inputs.forEach(function (input, index) {
+              input.addEventListener('input', function () {
+                  if (this.value.length === 1) {
+                      if (index < inputs.length - 1) {
+                          inputs[index + 1].focus();
+                      }
+                  }
+              });
+  
+              input.addEventListener('keydown', function (e) {
+                  if (e.key === 'Backspace' && index > 0) {
+                      inputs[index - 1].focus();
+                  }
+              });
+          });
+      });
+  </script>
+  <style>
+    #timer {
+      display: none;
+      position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+
+    }
+    #resend{
+        position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+
+    }
+    #resendBtn {
+      display: none;
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Function to display timer
+      function startTimer(duration, display) {
+        var timer = duration, minutes, seconds;
+        setInterval(function () {
+          minutes = parseInt(timer / 60, 10);
+          seconds = parseInt(timer % 60, 10);
+
+          minutes = minutes < 10 ? "0" + minutes : minutes;
+          seconds = seconds < 10 ? "0" + seconds : seconds;
+
+          display.textContent = minutes + ":" + seconds;
+
+          if (--timer < 0) {
+            // Timer has finished, display the resend button
+            document.getElementById('timer').style.display = 'none';
+            document.getElementById('resendBtn').style.display = 'block';
+          }
+        }, 1000);
+      }
+
+      // Set the duration of the timer (1 minute)
+      var timerDuration = 30;
+
+      // Display the timer after 1 second
+      setTimeout(function () {
+        document.getElementById('timer').style.display = 'block';
+        var timerDisplay = document.querySelector('#timer');
+        startTimer(timerDuration, timerDisplay);
+      }, 1000);
+    });
+  </script>
+  </head>
+  <body>
+      <form class="form" action="/check-otp" method="post">
+          <p class="heading">Verify</p>
+          <svg class="check" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="60px" height="60px" viewBox="0 0 60 60" xml:space="preserve">  <image id="image0" width="60" height="60" x="0" y="0" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAQAAACQ9RH5AAAABGdBTUEAALGPC/xhBQAAACBjSFJN
+        AAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAJcEhZ
+        cwAACxMAAAsTAQCanBgAAAAHdElNRQfnAg0NDzN/r+StAAACR0lEQVRYw+3Yy2sTURTH8W+bNgVf
+        aGhFaxNiAoJou3FVEUQE1yL031BEROjCnf4PLlxILZSGYncuiiC48AEKxghaNGiliAojiBWZNnNd
+        xDza3pl77jyCyPzO8ubcT85wmUkG0qT539In+MwgoxQoUqDAKDn2kSNLlp3AGi4uDt9xWOUTK3xg
+        hVU2wsIZSkxwnHHGKZOxHKfBe6rUqFGlTkPaVmKGn6iYao1ZyhK2zJfY0FZ9ldBzsbMKxZwZjn/e
+        5szGw6UsD5I0W6T+hBhjUjiF7bNInjz37Ruj3igGABjbtpIo3GIh30u4ww5wr3fwfJvNcFeznhBs
+        YgXw70TYX2bY/ulkZhWfzfBbTdtrzjPFsvFI+T/L35jhp5q2owDs51VIVvHYDM9sa/LY8XdtKy1l
+        FXfM8FVN2/X2ajctZxVXzPA5TZvHpfb6CFXxkerUWTOcY11LX9w0tc20inX2mmF4qG3upnNWrOKB
+        hIXLPu3dF1x+kRWq6ysHpkjDl+7eQjatYoOCDIZF3006U0unVSxIWTgTsI3HNP3soSJkFaflMDwL
+        3OoHrph9YsPCJJ5466DyOGUHY3Epg2rWloUxnMjsNw7aw3AhMjwVhgW4HYm9FZaFQZ/bp6QeMRQe
+        hhHehWKXGY7CAuSpW7MfKUZlAUqWdJ3DcbAAB3guZl9yKC4WYLfmT4muFtgVJwvQx7T2t0mnXK6J
+        XlGGyAQvfNkaJ5JBmxnipubJ5HKDbJJsM0eY38QucSx5tJWTVHBwqDDZOzRNmn87fwDoyM4J2hRz
+        NgAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyMy0wMi0xM1QxMzoxNTo1MCswMDowMKC8JaoAAAAldEVY
+        dGRhdGU6bW9kaWZ5ADIwMjMtMDItMTNUMTM6MTU6NTArMDA6MDDR4Z0WAAAAKHRFWHRkYXRlOnRp
+        bWVzdGFtcAAyMDIzLTAyLTEzVDEzOjE1OjUxKzAwOjAwIIO3fQAAAABJRU5ErkJggg=="></image>
+        </svg>
+          <div class="box">
+          <input class="input" type="password" maxlength="1" name="otp">
+          <input class="input" type="password" maxlength="1" name="otp1"> 
+          <input class="input" type="password" maxlength="1" name="otp2">
+          <input class="input" type="password" maxlength="1" name="otp3">
+          <input class="input" type="password" maxlength="1" name="otp4">
+          <input class="input" type="password" maxlength="1" name="otp5">
+          </div>
+          <button type="submit" class="btn1">Verify</button>
+          <div id="resend">Resend OTP in:</div>
+          <div id="timer" class="timer"><span id="timerDisplay"></span></div>
+  <button id="resendBtn" onclick="resendFunction()" class="btn2" form="form1">Resend</button>
+      </form>
+      <form action="/signupnum" id="form1" method="post"></form>
+  </body>
+  </html>
   `);
 });
     
 app.post("/check-otp", (req, res) => {
-  const otpCode = req.body.otp;
+  const otpCode = req.body.otp+req.body.otp1+req.body.otp2+req.body.otp3+req.body.otp4+req.body.otp5;
   const cache1 = cache.get('phone');
-  const phoneNumber = decryptData(cache1);
+  const phoneNumber = decryptData(cache1,res);
   client1.verify.v2
   .services(verifySid)
   .verificationChecks.create({ to: phoneNumber, code: otpCode })
@@ -422,22 +1189,29 @@ app.post("/check-otp", (req, res) => {
     if (verification_check.status == 'approved') {
       res.redirect('/signupimgnumdata')
     }
+    else{
+      notifier.notify({
+        title: 'INVALID OTP',
+        message: 'The otp which you have entered is invalid! please enter again',
+        icon:path.join(__dirname,'logo.png'),
+        sound:true
+      });
+      res.redirect('/verify');
+    }
   })
   .catch((error) => {
-    console.error(error);
-    res.send("Error occurred during verification");
+    console.log("line 961")
+    res.sendFile(path.join(__dirname+'/error.html'));
   });
 });
 
 app.get('/signupimgnumdata',async(req,res)=>{
     const cache1 = cache.get('phone');
-    const phone = decryptData(cache1);
+    const phone = decryptData(cache1,res);
     const cache3 = cache.get('verification');
-    const verification = decryptData(cache3);
-    cache.del('phone');
+    const verification = decryptData(cache3,res);
     const cache2 = cache.get('Base64Image');
-    const Base64Image = decryptData(cache2);
-    cache.del('Base64Image');
+    const Base64Image = decryptData(cache2,res);
     newUser={};
     if(req.user && verification=='email'){
       const Name=req.user._json['name'];
@@ -453,7 +1227,6 @@ app.get('/signupimgnumdata',async(req,res)=>{
       }
     }
     else if(req.user && verification=='sms'){
-      console.log("this is signup with google with phone")
       const Name=req.user._json['name'];
       const Email=req.user._json["email"];
       const Password=req.user._json["sub"];
@@ -467,7 +1240,6 @@ app.get('/signupimgnumdata',async(req,res)=>{
       }
     }
     else if(req.user){
-      console.log("this is signup with google with phone")
       const Name=req.user._json['name'];
       const Email=req.user._json["email"];
       const Password=req.user._json["sub"];
@@ -481,10 +1253,8 @@ app.get('/signupimgnumdata',async(req,res)=>{
       }
     }
     else{
-      console.log("this is signup with phone")
       const cache3 = cache.get('signupnumwithoutgoogle');
-      cache.del('signupnumwithoutgoogle');
-      const body = decryptData(cache3);
+      const body = decryptData(cache3,res);
       const Name=body.Name;
       const Email=body.Email;
       const Password=body.Password;
@@ -502,9 +1272,15 @@ app.get('/signupimgnumdata',async(req,res)=>{
   if(!result){
     db.insertOne(newUser, function(err, result) {
       if (err) {
-        console.log('Error inserting user into database', err);
-        return res.status(500).json({ error: 'Internal server error' });
+        console.log("line 1036")
+        res.sendFile(path.join(__dirname+'/error.html'));
       } else {
+        notifier.notify({
+          title: 'ACCOUNT CREATED SUCCESSFULLY',
+          message: 'Your acount has been created in Securebyte! Happy Securing',
+          icon:path.join(__dirname,'logo.png'),
+          sound:true
+        });
         res.redirect('/signin');}
     });
   }
@@ -542,6 +1318,7 @@ app.get('/invalid', (req, res) => {
   notifier.notify({
     title: 'Invalid password',
     message: 'Invalid username or password',
+    icon:path.join(__dirname,'logo.png'),
     sound:true
   });
   res.redirect('/signin');
@@ -550,8 +1327,7 @@ app.get('/invalid', (req, res) => {
 app.get('/signinauth',async(req,res)=>{
   var newUser={};
   const opt = cache.get('type');
-  const type = decryptData(opt);
-  console.log(type);
+  const type = decryptData(opt,res);
   if(req.user && type=="google login"){
     const Name=req.user._json["name"];
     const Email=req.user._json["email"];
@@ -565,8 +1341,7 @@ app.get('/signinauth',async(req,res)=>{
 }
 else{
   const cache1 = cache.get('signinauth');
-    const body = decryptData(cache1);
-    cache.del('signinauth');
+    const body = decryptData(cache1,res);
     const Name=body.Name;
     const Email=body.Email;
     const Password=body.Password;
@@ -595,22 +1370,253 @@ try {
     res.redirect('/signinnum');
   }
   else if(result.verification=='email'){
-    const k=googleotp(result.Email,result.Name);
+    k=googleotp(result.Email,result.Name,res);
       res.send(`
-  <form action="/check-gmailotp" method="post">
-    <label for="otp">Enter the OTP:</label>
-    <input type="text" id="otp" name="otp" />
-    <button type="submit">Verify</button>
-  </form>
+      <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Document</title>
+      <style>
+  html, body {
+      height: 100%;
+      margin: 0;
+  }
+  body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #d3d3d3;
+  }
+          .form {
+    width: 29em;
+    height: 25em;
+    display: flex;
+    flex-direction: column;
+    border-radius: 19px;
+    background-color: #d3d3d3;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    transition: .4s ease-in-out;
+    align-items:center;
+    top: auto;
+      bottom: auto;
+      margin-top: -12em;
+    
+  }
+  
+  .form:hover {
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.1);
+    scale: 0.99;
+  }
+  
+  .heading {
+    position: relative;
+    text-align: center;
+    color: black;
+    top: 3em;
+    font-weight: bold;
+  }
+  
+  .check {
+    position: relative;
+    align-self: center;
+    top: 4em;
+  }
+  
+  .input {
+    position: relative;
+    width: 2.5em;
+    height: 2.5em;
+    margin: 0.5em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    background-color: rgb(235, 235, 235);
+    box-shadow: inset 3px 3px 6px #d1d1d1,
+              inset -3px -3px 6px #ffffff;
+    top: 6.5em;
+    left: 1em;
+    padding-left: 15px;
+    transition: .4s ease-in-out;
+  }
+  
+  .input:hover {
+    box-shadow: inset 0px 0px 0px #d1d1d1,
+              inset 0px 0px 0px #ffffff;
+    background-color: rgb(149, 149, 149);
+  }
+  
+  .input:focus {
+    box-shadow: inset 0px 0px 0px #d1d1d1,
+              inset 0px 0px 0px #ffffff;
+  }
+  
+  .btn1 {
+    position: relative;
+    top: 8.5em;
+    left: 1.2em;
+    width: 17em;
+    height: 3em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+    box-shadow: 1px 1px 3px #b5b5b5,
+               -1px -1px 3px #ffffff;
+  }
+  
+  .btn1:active {
+    box-shadow: inset 3px 3px 6px #b5b5b5,
+              inset -3px -3px 6px #ffffff;
+  }
+  
+  .btn2 {
+    position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    width: 17em;
+    height: 3em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+    box-shadow: 1px 1px 3px #b5b5b5,
+               -1px -1px 3px #ffffff;
+  }
+  
+  .btn2:active {
+    box-shadow: inset 3px 3px 6px #b5b5b5,
+              inset -3px -3px 6px #ffffff;
+  }
+      </style>
+  <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          var inputs = document.querySelectorAll('.input');
+  
+          inputs.forEach(function (input, index) {
+              input.addEventListener('input', function () {
+                  if (this.value.length === 1) {
+                      if (index < inputs.length - 1) {
+                          inputs[index + 1].focus();
+                      }
+                  }
+              });
+  
+              input.addEventListener('keydown', function (e) {
+                  if (e.key === 'Backspace' && index > 0) {
+                      inputs[index - 1].focus();
+                  }
+              });
+          });
+      });
+  </script>
+  <style>
+    #timer {
+      display: none;
+      position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+
+    }
+    #resend{
+        position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+
+    }
+    #resendBtn {
+      display: none;
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Function to display timer
+      function startTimer(duration, display) {
+        var timer = duration, minutes, seconds;
+        setInterval(function () {
+          minutes = parseInt(timer / 60, 10);
+          seconds = parseInt(timer % 60, 10);
+
+          minutes = minutes < 10 ? "0" + minutes : minutes;
+          seconds = seconds < 10 ? "0" + seconds : seconds;
+
+          display.textContent = minutes + ":" + seconds;
+
+          if (--timer < 0) {
+            // Timer has finished, display the resend button
+            document.getElementById('timer').style.display = 'none';
+            document.getElementById('resendBtn').style.display = 'block';
+          }
+        }, 1000);
+      }
+
+      // Set the duration of the timer (1 minute)
+      var timerDuration = 30;
+
+      // Display the timer after 1 second
+      setTimeout(function () {
+        document.getElementById('timer').style.display = 'block';
+        var timerDisplay = document.querySelector('#timer');
+        startTimer(timerDuration, timerDisplay);
+      }, 1000);
+    });
+  </script>
+  </head>
+  <body>
+      <form class="form" action="/check-gmailotp" method="post">
+          <p class="heading">Verify</p>
+          <svg class="check" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="60px" height="60px" viewBox="0 0 60 60" xml:space="preserve">  <image id="image0" width="60" height="60" x="0" y="0" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAQAAACQ9RH5AAAABGdBTUEAALGPC/xhBQAAACBjSFJN
+        AAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAJcEhZ
+        cwAACxMAAAsTAQCanBgAAAAHdElNRQfnAg0NDzN/r+StAAACR0lEQVRYw+3Yy2sTURTH8W+bNgVf
+        aGhFaxNiAoJou3FVEUQE1yL031BEROjCnf4PLlxILZSGYncuiiC48AEKxghaNGiliAojiBWZNnNd
+        xDza3pl77jyCyPzO8ubcT85wmUkG0qT539In+MwgoxQoUqDAKDn2kSNLlp3AGi4uDt9xWOUTK3xg
+        hVU2wsIZSkxwnHHGKZOxHKfBe6rUqFGlTkPaVmKGn6iYao1ZyhK2zJfY0FZ9ldBzsbMKxZwZjn/e
+        5szGw6UsD5I0W6T+hBhjUjiF7bNInjz37Ruj3igGABjbtpIo3GIh30u4ww5wr3fwfJvNcFeznhBs
+        YgXw70TYX2bY/ulkZhWfzfBbTdtrzjPFsvFI+T/L35jhp5q2owDs51VIVvHYDM9sa/LY8XdtKy1l
+        FXfM8FVN2/X2ajctZxVXzPA5TZvHpfb6CFXxkerUWTOcY11LX9w0tc20inX2mmF4qG3upnNWrOKB
+        hIXLPu3dF1x+kRWq6ysHpkjDl+7eQjatYoOCDIZF3006U0unVSxIWTgTsI3HNP3soSJkFaflMDwL
+        3OoHrph9YsPCJJ5466DyOGUHY3Epg2rWloUxnMjsNw7aw3AhMjwVhgW4HYm9FZaFQZ/bp6QeMRQe
+        hhHehWKXGY7CAuSpW7MfKUZlAUqWdJ3DcbAAB3guZl9yKC4WYLfmT4muFtgVJwvQx7T2t0mnXK6J
+        XlGGyAQvfNkaJ5JBmxnipubJ5HKDbJJsM0eY38QucSx5tJWTVHBwqDDZOzRNmn87fwDoyM4J2hRz
+        NgAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyMy0wMi0xM1QxMzoxNTo1MCswMDowMKC8JaoAAAAldEVY
+        dGRhdGU6bW9kaWZ5ADIwMjMtMDItMTNUMTM6MTU6NTArMDA6MDDR4Z0WAAAAKHRFWHRkYXRlOnRp
+        bWVzdGFtcAAyMDIzLTAyLTEzVDEzOjE1OjUxKzAwOjAwIIO3fQAAAABJRU5ErkJggg=="></image>
+        </svg>
+          <div class="box">
+          <input class="input" type="password" maxlength="1" name="otp">
+          <input class="input" type="password" maxlength="1" name="otp1"> 
+          <input class="input" type="password" maxlength="1" name="otp2">
+          <input class="input" type="password" maxlength="1" name="otp3">
+          <input class="input" type="password" maxlength="1" name="otp4">
+          <input class="input" type="password" maxlength="1" name="otp5">
+          </div>
+          <button type="submit" class="btn1">Verify</button>
+          <div id="resend">Resend OTP in:</div>
+          <div id="timer" class="timer"><span id="timerDisplay"></span></div>
+  <button id="resendBtn" onclick="resendFunction()" class="btn2" form="form1">Resend</button>
+      </form>
+      <form action="/signinauth" id="form1" method="get"></form>
+  </body>
+  </html>
 `);
 
 
 app.post('/check-gmailotp',(req,res)=>{
-  if(req.body.otp==k){const body = encryptData(result.Base64Image);
+  const otp=req.body.otp+req.body.otp1+req.body.otp2+req.body.otp3+req.body.otp4+req.body.otp5;
+  if(otp==k){
+    const body = encryptData(result.Base64Image);
     cache.set('result', body);
     const objectId = new ObjectId(result._id);
     const idString = objectId.toString();
-    console.log(idString)
     const body1 = encryptData(idString);
     cache.set('some', body1);
     res.sendFile(path.join(__dirname+'/signinimgnum.html')); 
@@ -622,20 +1628,20 @@ app.post('/check-gmailotp',(req,res)=>{
     cache.set('result', body);
     const objectId = new ObjectId(result._id);
     const idString = objectId.toString();
-    console.log(idString)
     const body1 = encryptData(idString);
     cache.set('some', body1);
     res.sendFile(path.join(__dirname+'/signinimgnum.html'));
   }
 }
   catch (error) {
-    console.log(error)
+    console.log("line 1338")
+    res.sendFile(path.join(__dirname+'/error.html'));
   }})
   
 
   app.get('/signinnum', (req, res) => {
     const cache1 = cache.get('signinphone');
-    const phone = decryptData(cache1);
+    const phone = decryptData(cache1,res);
   
     client1.verify.v2
       .services(verifySid)
@@ -647,27 +1653,258 @@ app.post('/check-gmailotp',(req,res)=>{
         res.redirect('/verifysignin');
       })
       .catch((error) => {
-        console.error(error);
-        res.send("Error occurred while sending OTP");
+        console.log("line 1357");
+        res.sendFile(path.join(__dirname+'/error.html'));
+
       });
   });
   
 
   app.get("/verifysignin", (req, res) => {
     res.send(`
-      <form action="/check-otpsignin" method="post">
-        <label for="otp">Enter the OTP:</label>
-        <input type="text" id="otp" name="otp" />
-        <button type="submit">Verify</button>
+    <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Document</title>
+      <style>
+  html, body {
+      height: 100%;
+      margin: 0;
+  }
+  body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #d3d3d3;
+  }
+          .form {
+    width: 29em;
+    height: 25em;
+    display: flex;
+    flex-direction: column;
+    border-radius: 19px;
+    background-color: #d3d3d3;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    transition: .4s ease-in-out;
+    align-items:center;
+    top: auto;
+      bottom: auto;
+      margin-top: -12em;
+    
+  }
+  
+  .form:hover {
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.1);
+    scale: 0.99;
+  }
+  
+  .heading {
+    position: relative;
+    text-align: center;
+    color: black;
+    top: 3em;
+    font-weight: bold;
+  }
+  
+  .check {
+    position: relative;
+    align-self: center;
+    top: 4em;
+  }
+  
+  .input {
+    position: relative;
+    width: 2.5em;
+    height: 2.5em;
+    margin: 0.5em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    background-color: rgb(235, 235, 235);
+    box-shadow: inset 3px 3px 6px #d1d1d1,
+              inset -3px -3px 6px #ffffff;
+    top: 6.5em;
+    left: 1em;
+    padding-left: 15px;
+    transition: .4s ease-in-out;
+  }
+  
+  .input:hover {
+    box-shadow: inset 0px 0px 0px #d1d1d1,
+              inset 0px 0px 0px #ffffff;
+    background-color: rgb(149, 149, 149);
+  }
+  
+  .input:focus {
+    box-shadow: inset 0px 0px 0px #d1d1d1,
+              inset 0px 0px 0px #ffffff;
+  }
+  
+  .btn1 {
+    position: relative;
+    top: 8.5em;
+    left: 1.2em;
+    width: 17em;
+    height: 3em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+    box-shadow: 1px 1px 3px #b5b5b5,
+               -1px -1px 3px #ffffff;
+  }
+  
+  .btn1:active {
+    box-shadow: inset 3px 3px 6px #b5b5b5,
+              inset -3px -3px 6px #ffffff;
+  }
+  
+  .btn2 {
+    position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    width: 17em;
+    height: 3em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+    box-shadow: 1px 1px 3px #b5b5b5,
+               -1px -1px 3px #ffffff;
+  }
+  
+  .btn2:active {
+    box-shadow: inset 3px 3px 6px #b5b5b5,
+              inset -3px -3px 6px #ffffff;
+  }
+      </style>
+  <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          var inputs = document.querySelectorAll('.input');
+  
+          inputs.forEach(function (input, index) {
+              input.addEventListener('input', function () {
+                  if (this.value.length === 1) {
+                      if (index < inputs.length - 1) {
+                          inputs[index + 1].focus();
+                      }
+                  }
+              });
+  
+              input.addEventListener('keydown', function (e) {
+                  if (e.key === 'Backspace' && index > 0) {
+                      inputs[index - 1].focus();
+                  }
+              });
+          });
+      });
+  </script>
+  <style>
+    #timer {
+      display: none;
+      position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+
+    }
+    #resend{
+        position: relative;
+    top: 9.5em;
+    left: 1.2em;
+    border-radius: 5px;
+    border: none;
+    outline: none;
+    transition: .4s ease-in-out;
+
+    }
+    #resendBtn {
+      display: none;
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Function to display timer
+      function startTimer(duration, display) {
+        var timer = duration, minutes, seconds;
+        setInterval(function () {
+          minutes = parseInt(timer / 60, 10);
+          seconds = parseInt(timer % 60, 10);
+
+          minutes = minutes < 10 ? "0" + minutes : minutes;
+          seconds = seconds < 10 ? "0" + seconds : seconds;
+
+          display.textContent = minutes + ":" + seconds;
+
+          if (--timer < 0) {
+            // Timer has finished, display the resend button
+            document.getElementById('timer').style.display = 'none';
+            document.getElementById('resendBtn').style.display = 'block';
+          }
+        }, 1000);
+      }
+
+      // Set the duration of the timer (1 minute)
+      var timerDuration = 30;
+
+      // Display the timer after 1 second
+      setTimeout(function () {
+        document.getElementById('timer').style.display = 'block';
+        var timerDisplay = document.querySelector('#timer');
+        startTimer(timerDuration, timerDisplay);
+      }, 1000);
+    });
+  </script>
+  </head>
+  <body>
+      <form class="form" action="/check-otpsignin" method="post">
+          <p class="heading">Verify</p>
+          <svg class="check" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="60px" height="60px" viewBox="0 0 60 60" xml:space="preserve">  <image id="image0" width="60" height="60" x="0" y="0" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAQAAACQ9RH5AAAABGdBTUEAALGPC/xhBQAAACBjSFJN
+        AAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAJcEhZ
+        cwAACxMAAAsTAQCanBgAAAAHdElNRQfnAg0NDzN/r+StAAACR0lEQVRYw+3Yy2sTURTH8W+bNgVf
+        aGhFaxNiAoJou3FVEUQE1yL031BEROjCnf4PLlxILZSGYncuiiC48AEKxghaNGiliAojiBWZNnNd
+        xDza3pl77jyCyPzO8ubcT85wmUkG0qT539In+MwgoxQoUqDAKDn2kSNLlp3AGi4uDt9xWOUTK3xg
+        hVU2wsIZSkxwnHHGKZOxHKfBe6rUqFGlTkPaVmKGn6iYao1ZyhK2zJfY0FZ9ldBzsbMKxZwZjn/e
+        5szGw6UsD5I0W6T+hBhjUjiF7bNInjz37Ruj3igGABjbtpIo3GIh30u4ww5wr3fwfJvNcFeznhBs
+        YgXw70TYX2bY/ulkZhWfzfBbTdtrzjPFsvFI+T/L35jhp5q2owDs51VIVvHYDM9sa/LY8XdtKy1l
+        FXfM8FVN2/X2ajctZxVXzPA5TZvHpfb6CFXxkerUWTOcY11LX9w0tc20inX2mmF4qG3upnNWrOKB
+        hIXLPu3dF1x+kRWq6ysHpkjDl+7eQjatYoOCDIZF3006U0unVSxIWTgTsI3HNP3soSJkFaflMDwL
+        3OoHrph9YsPCJJ5466DyOGUHY3Epg2rWloUxnMjsNw7aw3AhMjwVhgW4HYm9FZaFQZ/bp6QeMRQe
+        hhHehWKXGY7CAuSpW7MfKUZlAUqWdJ3DcbAAB3guZl9yKC4WYLfmT4muFtgVJwvQx7T2t0mnXK6J
+        XlGGyAQvfNkaJ5JBmxnipubJ5HKDbJJsM0eY38QucSx5tJWTVHBwqDDZOzRNmn87fwDoyM4J2hRz
+        NgAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyMy0wMi0xM1QxMzoxNTo1MCswMDowMKC8JaoAAAAldEVY
+        dGRhdGU6bW9kaWZ5ADIwMjMtMDItMTNUMTM6MTU6NTArMDA6MDDR4Z0WAAAAKHRFWHRkYXRlOnRp
+        bWVzdGFtcAAyMDIzLTAyLTEzVDEzOjE1OjUxKzAwOjAwIIO3fQAAAABJRU5ErkJggg=="></image>
+        </svg>
+          <div class="box">
+          <input class="input" type="password" maxlength="1" name="otp">
+          <input class="input" type="password" maxlength="1" name="otp1"> 
+          <input class="input" type="password" maxlength="1" name="otp2">
+          <input class="input" type="password" maxlength="1" name="otp3">
+          <input class="input" type="password" maxlength="1" name="otp4">
+          <input class="input" type="password" maxlength="1" name="otp5">
+          </div>
+          <button type="submit" class="btn1">Verify</button>
+          <div id="resend">Resend OTP in:</div>
+          <div id="timer" class="timer"><span id="timerDisplay"></span></div>
+  <button id="resendBtn" onclick="resendFunction()" class="btn2" form="form1">Resend</button>
       </form>
+      <form action="/signinnum" id="form1" method="get"></form>
+  </body>
+  </html>
     `);
   });
 
   app.post('/check-otpsignin', (req, res) => {
-    const otpCode = req.body.otp;
+    const otpCode = req.body.otp+req.body.otp1+req.body.otp2+req.body.otp3+req.body.otp4+req.body.otp5;
+    
     const cache1 = cache.get('signinphone'); // Typo: 'singinphone' should be 'signinphone'
-    const phoneNumber = decryptData(cache1);
-    cache.del('signinphone'); // Typo: 'singinphone' should be 'signinphone'
+    const phoneNumber = decryptData(cache1,res);
   
     client1.verify.v2
       .services(verifySid)
@@ -676,27 +1913,40 @@ app.post('/check-gmailotp',(req,res)=>{
         if (verification_check.status == 'approved') {
           res.sendFile(path.join(__dirname + '/signinimgnum.html'));
         }
+        else{
+          notifier.notify({
+            title: 'INVALID OTP',
+            message: 'The otp which you have entered is invalid! please enter again',
+            icon:path.join(__dirname,'logo.png'),
+            sound:true
+          });
+          res.redirect('/verifysignin');
+        }
       })
       .catch((error) => {
-        console.error(error);
-        res.send("Error occurred during verification");
+        console.log("line 1565")
+        notifier.notify({
+          title: 'SOME ERROR HAS OCCURRED',
+          message: 'Please relogin again to access your data!',
+          icon:path.join(__dirname,'logo.png'),
+          sound:true
+        });
+        res.redirect('/signin')
       });
   });
 
 
 app.post('/compare', async (req, res) => {
   const cache1 = cache.get('result');
-  const Base64Image1 = decryptData(cache1);
+  const Base64Image1 = decryptData(cache1,res);
   const Base64Image2 = req.body.imageData;
   try {
-    console.log("hello1");
 
     const formData = new FormData();
     formData.append('api_key', 'LZBWzpb_HkZ178b-8y8OzkJFj-poxFB5');
     formData.append('api_secret', 'oIjgHqcskEzgJoPzT6qbScNomn1UU0gY');
     formData.append('image_base64_1', Base64Image1);
     formData.append('image_base64_2', Base64Image2);
-    console.log("hello2")
     const response = await axios.post('https://api-us.faceplusplus.com/facepp/v3/compare', formData, {
       headers: {
         ...formData.getHeaders(),
@@ -711,8 +1961,14 @@ app.post('/compare', async (req, res) => {
       res.send("FACE IS NOT MATCHED");
     }
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Error comparing images' });
+    console.log("line 1604")
+    notifier.notify({
+      title: 'INVALID USER',
+      message: 'Your face is not matching!',
+      icon:path.join(__dirname,'logo.png'),
+      sound:true
+    });
+    res.redirect('/signin')
   }
 });
 
@@ -721,14 +1977,24 @@ app.post('/compare', async (req, res) => {
 
 
 
-app.post('/Add',(req,res)=>{
+app.post('/Add', (req, res) => {
+  if (cache.has('some')) {
     res.sendFile(__dirname + '/pdfup.html');
-})
+  } else {
+    notifier.notify({
+      title: 'YOU ARE AT WRONG PLACE',
+      message: 'You are lost! let me take you to a safe location',
+      icon: path.join(__dirname, 'logo.png'),
+      sound: true
+    });
+    res.redirect('/signin');
+  }
+});
 
 app.post('/upload', upload.array('files',5),async (req, res) => {
   try {
     const cache1 = cache.get('some');
-    const id = decryptData(cache1);
+    const id = decryptData(cache1,res);
 
     const numRecords = parseInt(req.body.numRecords, 10);
     let records = [];
@@ -775,16 +2041,32 @@ app.post('/upload', upload.array('files',5),async (req, res) => {
     }
     records.push(record);
     const update = { $set: {} };
-    for (const item of records) {
-      const field = Object.keys(item)[0];
-      const value = item[field];
-      update.$set[field] = value;
+    for (var item of records) {
+      for(var i=0;i<Object.keys(item).length;i++){
+        const field = Object.keys(item)[i];
+        const value = item[field];
+        update.$set[field] = value;
+      }
+     
     }
     const result = await db.updateOne(filter, update);
-    res.sendFile(path.join(__dirname + '/success.html'));  
+    notifier.notify({
+      title: 'SUCCESSFULLY UPLOADED',
+      message: 'Your files has been uploaded. You can access it by clicking on retreive!! Happy Securing',
+      icon:path.join(__dirname,'logo.png'),
+      sound:true
+    });
+    res.sendFile(__dirname + '/account.html');
   }
   catch(err){
-    console.log(err);
+    console.log("line 1699")
+    notifier.notify({
+      title: 'THE DATA YOU WANT TO UPLOAD IS TOO LARGE',
+      message: 'The file is too large please upload the file within the size of 10mb',
+      icon:path.join(__dirname,'logo.png'),
+      sound:true
+    });
+    res.redirect('/Add');
   }
 });
 
@@ -792,10 +2074,12 @@ app.post('/upload', upload.array('files',5),async (req, res) => {
 
 
 
+
 app.post('/retreive',async(req,res)=>{
+if(cache.has('some')){
   try {
     const cache1 = cache.get('some');
-    const id = decryptData(cache1);
+    const id = decryptData(cache1,res);
     const fileId = id;
 
     if (!fileId) {
@@ -809,7 +2093,6 @@ app.post('/retreive',async(req,res)=>{
     const document = await db.findOne({ _id: new ObjectId(fileId) });
 
     const dataKeys = Object.keys(document).filter(key => key.startsWith('data'));
-    console.log(dataKeys);
     const dataUrl = [];
     const qrCodes=[];
     const data=[];
@@ -873,7 +2156,7 @@ app.get(`/${id}`, (req1, res1) => {
 
     // Wait for all promises to resolve
     await Promise.all(promises);
-    var html=`<!DOCTYPE html>
+    var html = `<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -1088,138 +2371,92 @@ app.get(`/${id}`, (req1, res1) => {
                   gap: 30px;
                   margin-bottom: 40px;
                 }
-        
-    </style>
+        </style>
     </head>
     <body style="background-color: #d3d3d3;">
-    <div class="container">`
-    for(var i=0;i<dataUrl.length;i++){
-      if((i+1)%5==0){
-        html+=`</div>
-              <div class="container">`
-      }
+        <div class="container">`;
 
-      
-        html+=`
+for (var i = 0; i < dataUrl.length; i++) {
+    if (i > 0 && i % 4 === 0) {
+        // Start a new container after every 4 containers
+        html += `</div><div class="container">`;
+    }
+
+    html += `
         <div class="form">
-        <center>
-        <img src="${qrCodes[i]}" alt="QR Code" >
-        <div style="font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif; font-weight: bolder;">${dataUrl2[i]}</div>
-        <hr class="card-divider">
-        <div class="separator">
-        <div></div>
-        <span>OR</span>
-        <div></div>
-      </div>
-      <br>
-      </center>
-        <div class="c1">
-          <a href="${dataUrl1[i]}" download="${dataUrl2[i]}" style="text-decoration:none"> 
-          <button class="button" type="submit">
-            <span class="button__text">Download</span>
-            <span class="button__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" id="bdd05811-e15d-428c-bb53-8661459f9307" data-name="Layer 2" class="svg"><path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path><path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path><path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path></svg></span>
-          </button>
-        </a>
-    <button class="button1" type="submit" form="dlt${i}" id="button${i}">
-            <span class="button__icon"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="200" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16" id="IconChangeColor"> <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" id="mainIconPathAttribute"></path> <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" id="mainIconPathAttribute"></path> </svg></span>
-          </button>
-        </div>
-        <form id="dlt${i}" method="post" action="/dlt">
-            <input type="hidden" value="${dataKeys}" name="dataKeys">
-            <input type="hidden" value="${i}" name="data">
-            <input type="hidden" value="${fileId}" name="fileid">
+            <center>
+                <img src="${qrCodes[i]}" alt="QR Code" >
+                <div style="font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif; font-weight: bolder;">${dataUrl2[i]}</div>
+                <hr class="card-divider">
+                <div class="separator">
+                    <div></div>
+                    <span>OR</span>
+                    <div></div>
+                </div>
+                <br>
+            </center>
+            <div class="c1">
+                <a href="${dataUrl1[i]}" download="${dataUrl2[i]}" style="text-decoration:none"> 
+                    <button class="button" type="submit">
+                        <span class="button__text">Download</span>
+                        <span class="button__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" id="bdd05811-e15d-428c-bb53-8661459f9307" data-name="Layer 2" class="svg"><path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z"></path><path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z"></path><path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z"></path></svg></span>
+                    </button>
+                </a>
+                <button class="button1" type="submit" form="dlt${i}" id="button${i}">
+                    <span class="button__icon"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="200" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16" id="IconChangeColor"> <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 1-1 0V6a.5.5 0 0 1 1 0V6z" id="mainIconPathAttribute"></path> <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" id="mainIconPathAttribute"></path> </svg></span>
+                </button>
+            </div>
+            <form id="dlt${i}" method="post" action="/dlt">
+                <input type="hidden" value="${dataKeys}" name="dataKeys">
+                <input type="hidden" value="${i}" name="data">
+                <input type="hidden" value="${fileId}" name="fileid">
+            </form>
+        </div>`;
+}
 
-        </form>
-</div>`}
-
-    html+=`</div>
-    </body>
-    </html>`
+html += `</div></body></html>`;
     res.send(html)
-    console.log('Disconnected from MongoDB server');
- } catch (error) {
-    console.error('Error:', error);
-    res.status(500).send('An error occurred');
-  }
-});
-
-
-
-app.post('/Add',(req,res)=>{
-  res.sendFile(__dirname + '/pdfup.html');
-})
-
-app.post('/upload', upload.array('data'),async (req, res) => {
-try {
-  const cache1 = cache.get('some');
-  const id = decryptData(cache1);
-
-  const numRecords = parseInt(req.body.numRecords, 10);
-  let records = [];
-  let record = {};
-  const bodyLength = Object.keys(req.body).length;
-  const filter = { _id: ObjectId(id)}
-  const keys1=await db.findOne(filter);
-  const keys = Object.keys(keys1);
-  const lastKey = keys[keys.length - 1];
-  if(lastKey=='verification'){
-    var number=0;
-  }
+ }
+ catch (error) {
+  notifier.notify({
+    title: 'YOU ARE AT WRONG PLACE',
+    message: 'You are lost! let me take you to a safe location',
+    icon:path.join(__dirname,'logo.png'),
+    sound:true
+  });
+  res.redirect('/signin');
+  }}
   else{
-    const match = lastKey.match(/\d+/);
-    var number = parseInt(match[0]);
-  }
-  
-  const isFileInput = req.files && req.files.length > 0
-    const files=req.files;
-    if (isFileInput) {
-      for (let i = 0; i <files.length ; i++) {
-      const k=files[i];
-      var filePath = k.path;
-      const fileData = fs.readFileSync(filePath);
-      const base64FileData = fileData.toString('base64');
-      number=number+1;
-      fs.unlinkSync(filePath);
-      record["data"+(number)] = {
-        filename: k.originalname,
-        contentType: k.mimetype,
-        data: fileData
-      };
-    } 
-  }
-
-  if(bodyLength>2){
-    const dataKeys = Object.keys(req.body).filter(key => key.startsWith('data'));
-    var temp=1;
-    dataKeys.forEach(key => {
-      const dataValue = req.body[key];
-      record["data"+temp]=dataValue;
-      temp=temp+1
+    notifier.notify({
+      title: 'YOU ARE AT WRONG PLACE',
+      message: 'You are lost! let me take you to a safe location',
+      icon: path.join(__dirname, 'logo.png'),
+      sound: true
     });
+    res.redirect('/signin');
   }
-  records.push(record);
-  const update = { $set: {} };
-  for (const item of records) {
-    const field = Object.keys(item)[0];
-    const value = item[field];
-    update.$set[field] = value;
-  }
-  const result = await db.updateOne(filter, update);
-  res.sendFile(path.join(__dirname + '/success.html'));  
-}
-catch(err){
-  console.log(err);
-}
 });
+
+
+
+
+
+
+
+
+
 
 
 
 
 
 app.get('/retreive',async(req,res)=>{
+
+if(cache.has('some')){
+
 try {
   const cache1 = cache.get('some');
-  const id = decryptData(cache1);
+  const id = decryptData(cache1,res);
   const fileId = id;
 
   if (!fileId) {
@@ -1557,11 +2794,12 @@ dataUrl1.push(downloadUrl1);
   </body>
   </html>`
   res.send(html)
-  console.log('Disconnected from MongoDB server');
 } catch (error) {
-  console.error('Error:', error);
-  res.status(500).send('An error occurred');
+  console.log("line 2518")
+  res.sendFile(path.join(__dirname+'/error.html'));
 }
+}
+
 });
 
 
@@ -1570,7 +2808,6 @@ dataUrl1.push(downloadUrl1);
 app.post('/dlt',async(req,res)=>{
   const id=req.body.data;
   const data=req.body.dataKeys;
-  console.log(req.body);
   const dataKeysArray = data.split(',');
   const dataIndex = parseInt(id);
   const result = dataKeysArray[dataIndex];
@@ -1578,6 +2815,42 @@ app.post('/dlt',async(req,res)=>{
   const update = { $unset: { [result]: 1 } };
   const result1 = await db.updateOne(filter, update);
   res.redirect('/retreive')
+})
+
+
+app.post('/logout',async(req,res)=>{
+  if(cache.has('verification')){
+    cache.del('verification');
+  }
+  if(cache.has('type')){
+    cache.del('type');
+  }
+  if(cache.has('dataKey')){
+    cache.del('dataKey');
+  }
+  if(cache.has('signupnumwithoutgoogle')){
+    cache.del('signupnumwithoutgoogle');
+  }
+  if(cache.has('phone')){
+    cache.del('phone');
+  }
+  if(cache.has('Base64Image')){
+    cache.del('Base64Image');
+  }
+  if(cache.has('signinauth')){
+    cache.del('signinauth');
+  }
+  if(cache.has('some')){
+    cache.del('some');
+  }
+  if(cache.has('result')){
+    cache.del('result');
+  }
+  if(cache.has('signinphone')){
+    cache.del('signinphone');
+  }
+  await client.close();
+  res.sendFile(path.join(__dirname + '/index.html'));
 })
 
 
