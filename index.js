@@ -2141,7 +2141,7 @@ app.get(`/${id}`, (req1, res1) => {
       })
   var downloadUrl;
   if(process.env.PORT){
-    downloadUrl =`${process.env.PORT}/${id}`;
+    downloadUrl =`https://securebyte-9b2a.onrender.com/${id}`;
   }
   else{
     downloadUrl =`localhost:3000/${id}`;
