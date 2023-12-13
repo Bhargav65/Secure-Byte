@@ -2514,7 +2514,7 @@ res1.send(k.data.buffer);
     })
 var downloadUrl;
 if(process.env.PORT){
-  downloadUrl =`${process.env.PORT}/${id}`;
+  downloadUrl =`https://securebyte-9b2a.onrender.com/${id}`;
 }
 else{
   downloadUrl =`localhost:3000/${id}`;
