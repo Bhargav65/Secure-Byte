@@ -1630,7 +1630,7 @@ app.post('/check-gmailotp',(req,res)=>{
     const idString = objectId.toString();
     const body1 = encryptData(idString);
     cache.set('some', body1);
-    res.sendFile(path.join(__dirname+'/signinimgnum.html'));
+    res.sendFile(path.join(__dirname+'/signinimg.html'));
   }
 }
   catch (error) {
@@ -1940,6 +1940,8 @@ app.post('/compare', async (req, res) => {
   const cache1 = cache.get('result');
   const Base64Image1 = decryptData(cache1,res);
   const Base64Image2 = req.body.imageData;
+  console.log(Base64Image2);
+
   try {
 
     const formData = new FormData();
