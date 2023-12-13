@@ -88,7 +88,7 @@ passport.use(
     {
       clientID: '234673302290-ic1oma4gm5cqkh33esukoej7tgpdnq43.apps.googleusercontent.com',
       clientSecret: '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',
-      callbackURL: 'http://localhost:3000/auth/google/callback'
+      callbackURL: 'https://securebyte-9b2a.onrender.com/auth/google/callback'
     },
     (accessToken, refreshToken, profile, done) => {
       done(null, profile);
