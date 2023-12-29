@@ -1940,7 +1940,6 @@ app.post('/compare', async (req, res) => {
   const cache1 = cache.get('result');
   const Base64Image1 = decryptData(cache1,res);
   const Base64Image2 = req.body.imageData;
-  console.log(Base64Image2);
 
   try {
 
