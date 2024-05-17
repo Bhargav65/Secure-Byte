@@ -13,8 +13,8 @@ const secretKey = 'YourSecretKey';
 const NodeCache = require('node-cache');
 const cache = new NodeCache();
 const accountSid = "AC0f95cb0ec3c018d145054f2c6c83ccc3";
-const authToken = "98b6f228996e4b0266ee9ff598379bb0";
-const verifySid = "VA4b52daeec89b7be1339559c5d4744a05";
+const authToken = "35afed7ebb6f609fe1f16fd63f15d20f";
+const verifySid = "VA189a2e56d29d8f33ef6cc7e1066cc74e";
 const client1 = require("twilio")(accountSid, authToken);
 const request=require('request')
 const multer = require('multer');
@@ -88,7 +88,7 @@ passport.use(
     {
       clientID: '234673302290-ic1oma4gm5cqkh33esukoej7tgpdnq43.apps.googleusercontent.com',
       clientSecret: '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',
-      callbackURL: 'https://securebyte-ppxd.onrender.com/auth/google/callback'
+      callbackURL: 'http://localhost:3000/auth/google/callback'
     },
     (accessToken, refreshToken, profile, done) => {
       done(null, profile);
@@ -926,6 +926,7 @@ app.post('/signupnum',(req,res)=>{
       res.redirect('/verify');
   })
   .catch((error) => {
+    console.log(error)
     console.log("line 750");
     notifier.notify({
       title: 'ERROR SENDING OTP',
@@ -933,9 +934,11 @@ app.post('/signupnum',(req,res)=>{
       icon:path.join(__dirname,'logo.png'),
       sound:true
     });
-    res.redirect('/signupnum')
   });
 })
+
+
+
 
 
 app.get("/verify", (req, res) => {
