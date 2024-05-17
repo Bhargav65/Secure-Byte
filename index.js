@@ -26,6 +26,7 @@ const qrcode = require('qrcode');
 var mime = require('mime-to-extensions')
 const axios=require('axios')
 const crypto = require("crypto");
+require('dotenv').config();
 const notifier = require('node-notifier');
 const upload = multer({
   dest: path.join(__dirname, '/uploads') // Set the destination folder for uploaded files
@@ -51,7 +52,7 @@ function decryptData(encryptedData,res) {
   
 }
 
-const uri = "mongodb+srv://admin:admin@cluster0.dbot6fn.mongodb.net/SecureByteData?retryWrites=true&w=majority";
+const uri = process.env.uri;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 const port=process.env.PORT || 3000
 
@@ -86,9 +87,9 @@ app.use(passport.session());
 passport.use(
   new GoogleStrategy(
     {
-      clientID: '234673302290-ic1oma4gm5cqkh33esukoej7tgpdnq43.apps.googleusercontent.com',
-      clientSecret: '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',
-      callbackURL: 'http://localhost:3000/auth/google/callback'
+      clientID: process.env.clientID,
+      clientSecret: process.env.clientSecret,
+      callbackURL: process.env.callbackURL
     },
     (accessToken, refreshToken, profile, done) => {
       done(null, profile);
