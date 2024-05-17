@@ -2144,10 +2144,10 @@ app.get(`/${id}`, (req1, res1) => {
       })
   var downloadUrl;
   if(process.env.PORT){
-    downloadUrl =`https://securebyte-ppxd.onrender.com/${id}`;
+    downloadUrl =`https://secure-byte.vercel.app/${id}`;
   }
   else{
-    downloadUrl =`localhost:3000/${id}`;
+    downloadUrl =`https://secure-byte.vercel.app/${id}`;
   }
   console.log(downloadUrl);
   dataUrl.push(downloadUrl);
