@@ -5,10 +5,13 @@
 			"use": "@vercel/node"
 		},
 		{
-			"src": "css/**",
+			"src": "css/base.css",
+			"use": "@vercel/static"
+		  },
+		  {
+			"src": "index.html",
 			"use": "@vercel/static"
 		  }
-	  
 	],
 	
 	"routes": [
