@@ -41,15 +41,9 @@ function encryptData(data) {
 }
 
 
-function decryptData(encryptedData,res) {
-  if(typeof encryptedData === "undefined"){
-    res.sendFile(path.join(__dirname+'/error.html'));
-  }
-  else{
+function decryptData(encryptedData) {
     const decryptedData = jwt.verify(encryptedData, secretKey);
-    return decryptedData;
-  }
-  
+    return decryptedData;  
 }
 
 const uri = process.env.uri;
@@ -167,7 +161,7 @@ app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   async(req, res) => {
     const cache1 = cache.get('dataKey');
-    const body = decryptData(cache1,res);
+    const body = decryptData(cache1);
     if(body['form2CheckboxStatus']=='checked'){
       const doc=await db.findOne({Email:req.user._json["email"]})
 
@@ -561,7 +555,7 @@ app.post('/signup', async (req, res) => {
 
 app.get('/signupwithemail',async(req,res)=>{
   const cache7 = cache.get('dataKey');
-  const body = decryptData(cache7,res);
+  const body = decryptData(cache7);
   const name=body.Name;
   const Email=body.Email;
   const encryptedData2 = encryptData('email');
@@ -823,7 +817,7 @@ app.post('/check-gmailotp',(req,res)=>{
 app.post('/signupimg', async(req, res) => {
   const objectLength = Object.keys(req.body).length;
   const cache1 = cache.get('verification');
-  const verification = decryptData(cache1,res);
+  const verification = decryptData(cache1);
   var newUser={};
   if(objectLength==1 && req.user && verification=='email'){
     const Name=req.user._json['name'];
@@ -853,7 +847,7 @@ app.post('/signupimg', async(req, res) => {
   }
   else if(!req.user && verification=='email'){
     const cache1 = cache.get('dataKey');
-    const body = decryptData(cache1,res);
+    const body = decryptData(cache1);
     const Name=body.Name;
     const Email=body.Email;
     const Password=body.Password;
@@ -867,7 +861,7 @@ app.post('/signupimg', async(req, res) => {
   }
   else if(!req.user && verification=='nil'){
     const cache1 = cache.get('dataKey');
-    const body = decryptData(cache1,res);
+    const body = decryptData(cache1);
     const Name=body.Name;
     const Email=body.Email;
     const Password=body.Password;
@@ -907,9 +901,9 @@ app.post('/signupnum',(req,res)=>{
   var Base64Image;
   if(cache.has('phone') && cache.has('Base64Image')){
     const cache5 = cache.get('phone');
-    phone = decryptData(cache5,res);
+    phone = decryptData(cache5);
     const cache6=cache.get('Base64Image');
-    Base64Image=decryptData(cache6,res)
+    Base64Image=decryptData(cache6)
   }
   else{
     phone="+91"+req.body.phone 
@@ -1185,7 +1179,7 @@ app.get("/verify", (req, res) => {
 app.post("/check-otp", (req, res) => {
   const otpCode = req.body.otp+req.body.otp1+req.body.otp2+req.body.otp3+req.body.otp4+req.body.otp5;
   const cache1 = cache.get('phone');
-  const phoneNumber = decryptData(cache1,res);
+  const phoneNumber = decryptData(cache1);
   client1.verify.v2
   .services(verifySid)
   .verificationChecks.create({ to: phoneNumber, code: otpCode })
@@ -1211,11 +1205,11 @@ app.post("/check-otp", (req, res) => {
 
 app.get('/signupimgnumdata',async(req,res)=>{
     const cache1 = cache.get('phone');
-    const phone = decryptData(cache1,res);
+    const phone = decryptData(cache1);
     const cache3 = cache.get('verification');
-    const verification = decryptData(cache3,res);
+    const verification = decryptData(cache3);
     const cache2 = cache.get('Base64Image');
-    const Base64Image = decryptData(cache2,res);
+    const Base64Image = decryptData(cache2);
     newUser={};
     if(req.user && verification=='email'){
       const Name=req.user._json['name'];
@@ -1258,7 +1252,7 @@ app.get('/signupimgnumdata',async(req,res)=>{
     }
     else{
       const cache3 = cache.get('signupnumwithoutgoogle');
-      const body = decryptData(cache3,res);
+      const body = decryptData(cache3);
       const Name=body.Name;
       const Email=body.Email;
       const Password=body.Password;
@@ -1331,7 +1325,7 @@ app.get('/invalid', (req, res) => {
 app.get('/signinauth',async(req,res)=>{
   var newUser={};
   const opt = cache.get('type');
-  const type = decryptData(opt,res);
+  const type = decryptData(opt);
   if(req.user && type=="google login"){
     const Name=req.user._json["name"];
     const Email=req.user._json["email"];
@@ -1345,7 +1339,7 @@ app.get('/signinauth',async(req,res)=>{
 }
 else{
   const cache1 = cache.get('signinauth');
-    const body = decryptData(cache1,res);
+    const body = decryptData(cache1);
     const Name=body.Name;
     const Email=body.Email;
     const Password=body.Password;
@@ -1645,7 +1639,7 @@ app.post('/check-gmailotp',(req,res)=>{
 
   app.get('/signinnum', (req, res) => {
     const cache1 = cache.get('signinphone');
-    const phone = decryptData(cache1,res);
+    const phone = decryptData(cache1);
   
     client1.verify.v2
       .services(verifySid)
@@ -1908,7 +1902,7 @@ app.post('/check-gmailotp',(req,res)=>{
     const otpCode = req.body.otp+req.body.otp1+req.body.otp2+req.body.otp3+req.body.otp4+req.body.otp5;
     
     const cache1 = cache.get('signinphone'); // Typo: 'singinphone' should be 'signinphone'
-    const phoneNumber = decryptData(cache1,res);
+    const phoneNumber = decryptData(cache1);
   
     client1.verify.v2
       .services(verifySid)
@@ -1942,7 +1936,7 @@ app.post('/check-gmailotp',(req,res)=>{
 
 app.post('/compare', async (req, res) => {
   const cache1 = cache.get('result');
-  const Base64Image1 = decryptData(cache1,res);
+  const Base64Image1 = decryptData(cache1);
   const Base64Image2 = req.body.imageData;
 
   try {
@@ -1999,7 +1993,7 @@ app.post('/Add', (req, res) => {
 app.post('/upload', upload.array('files',5),async (req, res) => {
   try {
     const cache1 = cache.get('some');
-    const id = decryptData(cache1,res);
+    const id = decryptData(cache1);
 
     const numRecords = parseInt(req.body.numRecords, 10);
     let records = [];
@@ -2084,7 +2078,7 @@ app.post('/retreive',async(req,res)=>{
 if(cache.has('some')){
   try {
     const cache1 = cache.get('some');
-    const id = decryptData(cache1,res);
+    const id = decryptData(cache1);
     const fileId = id;
 
     if (!fileId) {
@@ -2461,7 +2455,7 @@ if(cache.has('some')){
 
 try {
   const cache1 = cache.get('some');
-  const id = decryptData(cache1,res);
+  const id = decryptData(cache1);
   const fileId = id;
 
   if (!fileId) {
