@@ -120,8 +120,8 @@ const otp=generateOTP()
   const transporter = nodemailer.createTransport({
     service : 'Gmail',
     auth : {
-      user : 'securebyte.sb@gmail.com',
-      pass : 'qybnhpwhwnectjku'
+      user : 'securebyte3270@gmail.com',
+      pass : 'zowf alcw sdel osup'
     }
   });
   const emailTemplatePath = path.join(__dirname, 'email.html');
