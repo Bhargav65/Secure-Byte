@@ -1935,8 +1935,11 @@ app.post('/check-gmailotp',(req,res)=>{
 
 
 app.post('/compare', async (req, res) => {
+  console.log("before")
   const cache1 = cache.get('result');
+  console.log("after")
   const Base64Image1 = decryptData(cache1);
+  console.log("before1")
   const Base64Image2 = req.body.imageData;
 
   try {
