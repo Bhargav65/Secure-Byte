@@ -28,8 +28,9 @@ const axios=require('axios')
 const crypto = require("crypto");
 require('dotenv').config();
 const notifier = require('node-notifier');
+
 const upload = multer({
-  dest: path.join(__dirname, '/uploads') // Set the destination folder for uploaded files
+  dest: path.join('/tmp') // Use the /tmp directory for uploads
 });
 
 
