@@ -124,7 +124,7 @@ const otp=generateOTP()
       pass : 'qybnhpwhwnectjku'
     }
   });
-  const htmlTemplate=fs.readFileSync('email.html','utf8');
+  const htmlTemplate=fs.readFileSync('/email.html','utf8');
   const dynamicData={
     otp:otp,
     username:name
