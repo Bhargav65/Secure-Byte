@@ -106,57 +106,63 @@ app.get('/signup', (req, res) => {
 
 let k;
 
-function googleotp(email,name,res){
-  function generateOTP() {
-    var digits = '0123456789';
-    let OTP = '';
 
-    for (let i = 0; i < 6; i++ ) {
-        OTP += digits[Math.floor(Math.random() * 10)];
+
+async function googleotp(email, name, res) {
+  function generateOTP() {
+    const digits = '0123456789';
+    let OTP = '';
+    for (let i = 0; i < 6; i++) {
+      OTP += digits[Math.floor(Math.random() * 10)];
     }
     return OTP;
-}
-const otp=generateOTP()
+  }
+
+  const otp = generateOTP();
+
   const transporter = nodemailer.createTransport({
-    service : 'Gmail',
-    auth : {
-      user : 'securebyte3270@gmail.com',
-      pass : 'zowf alcw sdel osup'
+    service: 'Gmail',
+    auth: {
+      user: 'securebyte3270@gmail.com',
+      pass: 'zowf alcw sdel osup'
     }
   });
+
   const emailTemplatePath = path.join(__dirname, 'email.html');
   const htmlTemplate = fs.readFileSync(emailTemplatePath, 'utf8');
 
-  const dynamicData={
-    otp:otp,
-    username:name
-  }
-  const emailBody = htmlTemplate.replace(/\$\{(\w+)\}/g, (_, key) => dynamicData[key]);
-        const text1={text:otp}
-        const mail_option = {
-          from : 'securebyte.sb@gmail.com' ,
-          to : email,
-          subject: 'Welcome to Secure Byte',
-          html: emailBody
-        };
+  const dynamicData = {
+    otp: otp,
+    username: name
+  };
   
+  const emailBody = htmlTemplate.replace(/\$\{(\w+)\}/g, (_, key) => dynamicData[key]);
+  const mail_option = {
+    from: 'securebyte.sb@gmail.com',
+    to: email,
+    subject: 'Welcome to Secure Byte',
+    html: emailBody
+  };
 
-  transporter.sendMail(mail_option, (error, info) => {
-    if(error)
-    {
-      console.log("line 144");
-      notifier.notify({
-        title: 'ERROR SENDING OTP',
-        message: 'Please re-login again!',
-        icon:path.join(__dirname,'logo.png'),
-        sound:true
-      });
+  try {
+    await transporter.sendMail(mail_option);
+    console.log("generated otp is:", otp);
+    return otp;
+  } catch (error) {
+    console.error("Error sending email:", error);
+    notifier.notify({
+      title: 'ERROR SENDING OTP',
+      message: 'Please re-login again!',
+      icon: path.join(__dirname, 'logo.png'),
+      sound: true
+    });
     res.redirect('/signin');
-    }
-  });
-  console.log("generated otp is:",otp)
-  return otp
+  }
 }
+
+
+
+
 
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
@@ -228,7 +234,7 @@ app.get('/google-signup',async(req,res)=>{
         const name=req.user._json['name'];
         const encryptedData1 = encryptData('email');
         cache.set('verification', encryptedData1);
-        k=googleotp(Email,name,res);
+        k=await googleotp(Email,name,res);
         res.send(`
         <!DOCTYPE html>
   <html lang="en">
@@ -563,7 +569,7 @@ app.get('/signupwithemail',async(req,res)=>{
   const Email=body.Email;
   const encryptedData2 = encryptData('email');
       cache.set('verification', encryptedData2);
-      k=googleotp(Email,name,res);
+      k=await googleotp(Email,name,res);
       res.send(`
       <!DOCTYPE html>
   <html lang="en">
@@ -1325,6 +1331,7 @@ app.get('/invalid', (req, res) => {
   res.redirect('/signin');
 });
 
+
 app.get('/signinauth',async(req,res)=>{
   var newUser={};
   const opt = cache.get('type');
@@ -1371,7 +1378,7 @@ try {
     res.redirect('/signinnum');
   }
   else if(result.verification=='email'){
-    k=googleotp(result.Email,result.Name,res);
+    k=await googleotp(result.Email,result.Name,res);
       res.send(`
       <!DOCTYPE html>
   <html lang="en">
