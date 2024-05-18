@@ -13,8 +13,8 @@ const secretKey = 'YourSecretKey';
 const NodeCache = require('node-cache');
 const cache = new NodeCache();
 const accountSid = "AC0f95cb0ec3c018d145054f2c6c83ccc3";
-const authToken = "35afed7ebb6f609fe1f16fd63f15d20f";
-const verifySid = "VA189a2e56d29d8f33ef6cc7e1066cc74e";
+const authToken = "eab08fd819079f1c0367834737a87c66";
+const verifySid = "VA1e955986738e1490c4470604886739e5";
 const client1 = require("twilio")(accountSid, authToken);
 const request=require('request')
 const multer = require('multer');
@@ -1651,6 +1651,7 @@ app.post('/check-gmailotp',(req,res)=>{
         res.redirect('/verifysignin');
       })
       .catch((error) => {
+        console.log(error)
         console.log("line 1357");
         res.sendFile(path.join(__dirname+'/error.html'));
 
