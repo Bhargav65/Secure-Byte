@@ -54,15 +54,21 @@ const port=process.env.PORT || 3000
 app.use(bodyParser.json({ limit: '130mb' }));
 app.use(bodyParser.urlencoded({ limit: '130mb', extended: true }));
 
-client.connect((err) => {
-  if (err) {
-    console.log("line 57")
-    res.sendFile(path.join(__dirname+'/error.html'));
-  }
-  console.log('Connected to MongoDB Atlas');
-  db = client.db("myproject").collection("project1");
-});
+let db;
 
+const connectToMongoDB = async () => {
+  try {
+    const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+    await client.connect();
+    console.log('Connected to MongoDB Atlas');
+    db = client.db('chatapp').collection('chat');
+  } catch (err) {
+    console.error('Failed to connect to MongoDB Atlas', err);
+    process.exit(1); // Exit process with failure
+  }
+};
+
+connectToMongoDB();
 
 app.get('/',(req,res)=>{
   res.sendFile(path.join(__dirname+'/index.html'));
