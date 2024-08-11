@@ -141,7 +141,6 @@ a:focus-visible {
 }
 
 .frame {
-	background: rgba(0, 0, 0, 0.5);
 	-webkit-backdrop-filter: blur(10px);
 	backdrop-filter: blur(10px);
 	border: 1px solid #d3d3d3;
@@ -228,12 +227,13 @@ body #cdawrap {
 }
 
 a.frame__demos-item {
-	font-weight: bold;
-	color:#fff
+	font-family: "lores-9-plus-wide", sans-serif;
+	font-weight: bolder;
+	color:#000000;
+	font-size: 19px;
 }
 
 .content {
-	padding:  var(--page-padding);
 	display: flex;
 	flex-direction: column;
 	width: 100vw;
@@ -243,6 +243,7 @@ a.frame__demos-item {
 	align-items: start;
 	font-family: "greycliff-cf", sans-serif;
 	font-weight: 300;
+	color: #000000;
 	
 }
 
@@ -251,7 +252,6 @@ a.frame__demos-item {
 	line-height: 1;
 	pointer-events: none;
 	background-color: var(--gradient-text-1);
-	background-color:#d3d3d3;
 	background-size: 100%;
 	background-repeat: repeat;
 	-webkit-background-clip: text;
