@@ -8,7 +8,31 @@
     <title>Document</title>
    
     <style>
-      /* Add CSS styles for the container */
+      body, html {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    #vanta-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+    
+    .container {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        margin: 0;
+    }
+     
       .container1 {
         display: flex;
         justify-content: center;
@@ -16,6 +40,11 @@
         height: 100vh; /* Center vertically in the viewport */
       }
 
+      .form:hover{
+        transform: translate(-5px, -5px);
+        box-shadow: 9px 9px 0 #000;
+      }
+      
       .form {
         --input-focus: #2d8cf0;
         --font-color: #323232;
@@ -23,8 +52,14 @@
         --bg-color: #fff;
         --main-color: #323232;
         padding: 20px;
-        background: lightgrey;
+        background: transparent;
         display: flex;
+        background: rgba( 255, 255, 255, 0.15 );
+        box-shadow: 0 8px 32px 0 rgba( 31, 38, 135, 0.37 );
+        backdrop-filter: blur( 8px );
+        -webkit-backdrop-filter: blur( 8px );
+        border-radius: 10px;
+        border: 1px solid rgba( 255, 255, 255, 0.18 );
         flex-direction: column;
         align-items: flex-start;
         justify-content: center;
@@ -36,21 +71,12 @@
         width: 100%; 
         margin-top: 90px;
         margin-bottom: 60px;
+        transition: transform 0.3s, box-shadow 0.3s;
+
       }
 
 
-      .title {
-  color: var(--font-color);
-  font-weight: 900;
-  font-size: 20px;
-  margin-bottom: 25px;
-}
-
-.title span {
-  color: var(--font-color-sub);
-  font-weight: 600;
-  font-size: 17px;
-}
+      
 
 .input {
   width: 250px;
@@ -98,7 +124,6 @@
 .icon {
   width: 24px;
   height: 24px;
-  fill: var(--main-color);
 }
 
 .button-log:active, .button-confirm:active {
@@ -248,14 +273,269 @@
   margin-right: 5px;
 }
 
+.button-confirm {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+    /* margin: 50px auto 0 auto; */
+  padding: auto 15px 15px auto;
+  width: 250px;
+  height: 40px;
+  border-radius: 5px;
+  border: 2px solid var(--main-color);
+  background-color: var(--bg-color);
+  box-shadow: 4px 4px var(--main-color);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--font-color);
+  cursor: pointer;
+  transition: all 250ms;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.button-confirm::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0;
+  background-color: #212121;
+  z-index: -1;
+  -webkit-box-shadow: 4px 8px 19px -3px rgba(0, 0, 0, 0.27);
+  box-shadow: 4px 8px 19px -3px rgba(0, 0, 0, 0.27);
+  transition: all 250ms;
+}
+
+.button-confirm:hover {
+  color: #e8e8e8;
+}
+
+.button-confirm:hover::before {
+  width: 100%;
+}
+
+
+.button-log {
+  padding: 10px;
+  font-weight: bold;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  border-radius: 35px;
+  align-items: center;
+  border: solid black 2px;
+  outline: none;
+}
 
 
 
-      /* ... (Rest of your existing CSS) */
+.button-log .text {
+  z-index: 10;
+}
+
+.button-log:hover .text {
+  animation: text forwards 0.3s;
+  /*color: white;*/
+}
+
+@keyframes text {
+  from {
+    color: black;
+  }
+
+  to {
+    color: white;
+  }
+}
+
+
+
+.button-log:hover::before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 9%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  opacity: 0;
+  border-radius: 300px;
+  animation: wave1 2.5s ease-in-out forwards;
+}
+
+.button-log:hover::after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 9%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  opacity: 0;
+  border-radius: 300px;
+  animation: wave2 2.5s ease-in-out forwards;
+}
+
+@keyframes wave1 {
+  0% {
+    z-index: 1;
+    background: #EB4335;
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+
+  1% {
+    z-index: 1;
+    background: #EB4335;
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+
+  25% {
+    z-index: 1;
+    background: #EB4335;
+    width: 800px;
+    height: 800px;
+    opacity: 1;
+  }
+
+  26% {
+    z-index: 3;
+    background: #34A853;
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+
+  50% {
+    z-index: 3;
+    background: #34A853;
+    width: 800px;
+    height: 800px;
+    opacity: 1;
+  }
+
+  70% {
+    z-index: 3;
+    background: #34A853;
+    width: 800px;
+    height: 800px;
+    opacity: 1;
+  }
+
+  100% {
+    z-index: 3;
+    background: #34A853;
+    width: 800px;
+    height: 800px;
+    opacity: 1;
+  }
+}
+
+@keyframes wave2 {
+  0% {
+    z-index: 2;
+    background: #FBBC05;
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+
+  11% {
+    z-index: 2;
+    background: #FBBC05;
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+
+  35% {
+    z-index: 2;
+    background: #FBBC05;
+    width: 800px;
+    height: 800px;
+    opacity: 1;
+  }
+
+  39% {
+    z-index: 2;
+    background: #FBBC05;
+    width: 800px;
+    height: 800px;
+    opacity: 1;
+  }
+
+  40% {
+    z-index: 4;
+    background: #4285F4;
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+
+  64% {
+    z-index: 4;
+    background: #4285F4;
+    width: 800px;
+    height: 800px;
+    opacity: 1;
+  }
+
+  100% {
+    z-index: 4;
+    background: #4285F4;
+    width: 800px;
+    height: 800px;
+    opacity: 1;
+  }
+}
+
+.button-log:hover .red {
+  animation: disappear 0.1s forwards;
+  animation-delay: 0.1s;
+}
+
+.button-log:hover .yellow {
+  animation: disappear 0.1s forwards;
+  animation-delay: 0.3s;
+}
+
+.button-log:hover .green {
+  animation: disappear 0.1s forwards;
+  animation-delay: 0.7s;
+}
+
+.button-log:hover .blue {
+  animation: disappear 0.1s forwards;
+  animation-delay: 1.1s;
+}
+
+@keyframes disappear {
+  from {
+    filter: brightness(1);
+  }
+
+  to {
+    filter: brightness(100);
+  }
+}
+
+.text{
+  margin-top: 0.3rem;
+}
+
     </style>
 </head>
-<body style="background-color: #d3d3d3;">
-  
+<body>
+<div id="vanta-canvas">
 
 
 
@@ -264,7 +544,7 @@
 
     <form action="/signup" method="post" id="myForm1">
     <div class="form">
-      <div class="title" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">Welcome,<br><span>sign up to continue</span></div>
+      <div class="title" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;"> <span style="font-size:larger;font-weight:bolder">Welcome,</span><br><span>sign up to continue</span></div>
       <input type="text" placeholder="Name" name="Name" class="input" required>
       <input type="email" placeholder="Email" name="Email" class="input" required>
       <input type="password" placeholder="Password" name="Password" class="input" required>
@@ -299,7 +579,7 @@
         <input type="hidden" name="verificationType1" value="">
          </form>
         <button type="submit" form="myForm" class="button-log" style="margin-left: 120px;">
-          <svg class="icon" height="56.6934px" id="Layer_1" style="enable-background:new 0 0 56.6934 56.6934;" version="1.1" viewBox="0 0 56.6934 56.6934" width="56.6934px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+          <span class="text"><svg class="icon" height="56.6934px" id="Layer_1" style="enable-background:new 0 0 56.6934 56.6934;" version="1.1" viewBox="0 0 56.6934 56.6934" width="56.6934px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
             <path d="M51.981,24.4812c-7.7173-0.0038-15.4346-0.0019-23.1518-0.001c0.001,3.2009-0.0038,6.4018,0.0019,9.6017  
             c4.4693-0.001,8.9386-0.0019,13.407,0c-0.5179,3.0673-2.3408,5.8723-4.9258,7.5991c-1.625,1.0926-3.492,1.8018-5.4168,2.139  
             c-1.9372,0.3306-3.9389,0.3729-5.8713-0.0183c-1.9651-0.3921-3.8409-1.2108-5.4773-2.3649  
@@ -314,12 +594,32 @@
             c3.7284-0.8581,7.256-2.6397,10.0725-5.24c2.977-2.7358,5.1006-6.3403,6.2249-10.2138  
             C52.5807,33.3171,52.7498,28.8064,51.981,24.4812z">
             </path>
-          </svg>
+          </svg></span>
+
         </button>
         
       <button type="submit" class="button-confirm" form="myForm1" onclick="postForm('myForm1')">Let's go →</button>
     </div>
-  
+</div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.waves.min.js"></script>
+    <script>
+			VANTA.WAVES({
+				el: "#vanta-canvas",
+				mouseControls: true,
+				touchControls: true,
+				gyroControls: false,
+				minHeight: 200.00,
+				minWidth: 200.00,
+				scale: 1.00,
+				scaleMobile: 1.00,
+				color: 0x7e7e7e,
+				waveSpeed: 1.65,
+				zoom: 0.72
+			  
+			});
+		</script>
   </div>
 </body>
 <script>
